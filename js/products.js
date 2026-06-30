@@ -1,0 +1,65 @@
+/* =============================================================
+   ÜRÜN LİSTESİ ve OTOMATİK ÖNERİ MANTIĞI
+   Müşteri yazdıkça öneri çıkar. Listede olmayan ürünü müşteri
+   serbestçe yazabilir (özellikle sebzeler).
+   ============================================================= */
+
+// Bilinen ürünler (reklam görselindeki liste). İstediğinizi ekleyip çıkarabilirsiniz.
+const PRODUCTS = [
+  { name: "Ahududu",               type: "meyve" },
+  { name: "Böğürtlen",             type: "meyve" },
+  { name: "Vişne",                 type: "meyve" },
+  { name: "Kırmızı Frenk Üzümü",   type: "meyve" },
+  { name: "Mango",                 type: "meyve" },
+  { name: "Kırmızı Dragon Meyvesi",type: "meyve" },
+  { name: "Ananas",                type: "meyve" },
+  { name: "Çilek",                 type: "meyve" },
+  { name: "Şeftali",               type: "meyve" },
+  { name: "Kayısı",                type: "meyve" },
+  { name: "Mısır",                 type: "sebze" },
+  { name: "Bezelye",               type: "sebze" },
+  { name: "Fasulye",               type: "sebze" },
+  { name: "Ispanak",               type: "sebze" },
+  // Sık sebzeler (öneriye yardımcı olsun diye):
+  { name: "Brokoli",               type: "sebze" },
+  { name: "Karnabahar",            type: "sebze" },
+  { name: "Biber",                 type: "sebze" },
+  { name: "Patlıcan",              type: "sebze" },
+  { name: "Bamya",                 type: "sebze" },
+];
+
+/* Türkçe karakterleri sadeleştirip küçük harfe çevirir.
+   "ŞEFTALİ" / "seftali" / "şeftali" hepsi eşleşsin diye. */
+function normalizeTR(str) {
+  return (str || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .trim();
+}
+
+/* Yazılan metne göre öneri listesi döndürür.
+   groupFilter: "meyve" | "sebze" | "her ikisi" -> seçilen gruba göre filtreler. */
+function suggestProducts(query, groupFilter) {
+  const q = normalizeTR(query);
+  if (!q) return [];
+
+  let pool = PRODUCTS;
+  if (groupFilter === "meyve") pool = PRODUCTS.filter(p => p.type === "meyve");
+  else if (groupFilter === "sebze") pool = PRODUCTS.filter(p => p.type === "sebze");
+  // "her ikisi" -> hepsi
+
+  const starts = [];
+  const contains = [];
+  for (const p of pool) {
+    const n = normalizeTR(p.name);
+    if (n.startsWith(q)) starts.push(p.name);
+    else if (n.includes(q)) contains.push(p.name);
+  }
+  // Önce baştan eşleşenler, sonra içinde geçenler. En fazla 6 öneri.
+  return [...starts, ...contains].slice(0, 6);
+}

@@ -1,0 +1,9 @@
+# İç strateji/notlar ve ham kaynak görseller yayınlanmasın (gizli kalsın)
+dondurulnuş meyve.txt
+WhatsApp Image*.jpeg
+WhatsApp Image*.jpg
+
+# Yerel/geçici
+.claude/
+.DS_Store
+Thumbs.db

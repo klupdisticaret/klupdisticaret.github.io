@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dondurulmuş Meyve & Sebze İthalatı — Ön Teklif Al</title>
+  <meta name="description" content="Dondurulmuş meyve ve sebze ithalatı için hızlı ön teklif. Toptan tedarik, kalite kontrol, soğuk zincir, zamanında teslimat." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍓</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ===================== HERO ===================== -->
+  <header class="hero" id="hero">
+    <div class="hero__inner">
+      <p class="hero__eyebrow">❄ Klüp Dış Ticaret Güvencesi ile ❄</p>
+      <h1 class="hero__title">
+        Dondurulmuş <span class="accent">Meyve & Sebze</span> İthalatı için
+        <span class="accent">ön teklif</span> alın
+      </h1>
+      <p class="hero__sub">
+        Ürün tipinizi, miktarınızı ve bütçenizi girin. Sistem sizi uygun gruba ayırsın,
+        saniyeler içinde ön teklifinizi oluştursun.
+      </p>
+
+      <img class="hero__photo" src="assets/fruits-banner.jpg"
+           alt="Dondurulmuş ahududu, böğürtlen, vişne, çilek, dragon meyvesi, ananas, bezelye, fasulye ve ıspanak" />
+
+      <div class="badges">
+        <div class="badge"><span>🛡️</span> Güvenilir tedarik</div>
+        <div class="badge"><span>🏅</span> Kalite kontrolden geçirilmiş</div>
+        <div class="badge"><span>🚚</span> Zamanında teslimat</div>
+        <div class="badge"><span>❄️</span> -18°C soğuk zincir</div>
+        <div class="badge"><span>⭐</span> 27 yıllık tecrübe</div>
+      </div>
+
+      <button class="btn btn--cta" id="startBtn">📄 Hemen Teklif Al</button>
+      <p class="hero__note">Yaklaşık 1 dakika sürer • Ücretsiz ön değerlendirme</p>
+    </div>
+  </header>
+
+  <!-- ===================== FUNNEL ===================== -->
+  <main class="funnel" id="funnel" hidden>
+    <div class="funnel__bar">
+      <div class="funnel__progress" id="progress"></div>
+    </div>
+    <div class="funnel__stepwrap">
+      <div class="funnel__stepinfo">
+        <span id="stepCounter">Adım 1</span>
+        <button class="link-back" id="backBtn" hidden>← Geri</button>
+      </div>
+      <div id="stepContent"><!-- adımlar JS ile basılır --></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Klüp Dış Ticaret — Dondurulmuş Meyve & Sebze İthalatı</p>
+    <p class="muted">Bu site bir ön teklif aracıdır. Nihai fiyatlar görüşme sonrası netleşir.</p>
+  </footer>
+
+  <!-- jsPDF (PDF teklif için) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <!-- Uygulama dosyaları -->
+  <script src="js/config.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/proposal.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/funnel.js"></script>
+</body>
+</html>

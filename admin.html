@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yönetim Paneli — Lead Takibi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .admin { max-width: 1080px; margin: 0 auto; padding: 24px 18px 60px; }
+    .admin h1 { margin: 0 0 4px; }
+    .gate { max-width: 380px; margin: 14vh auto; text-align: center; }
+    .gate .text-input { margin: 14px 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin: 18px 0; }
+    @media (min-width: 700px){ .stat-grid { grid-template-columns: repeat(4,1fr); } }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; box-shadow: var(--shadow-sm);
+    }
+    .stat b { font-size: 1.8rem; display: block; color: var(--orange-dark); }
+    .stat span { color: var(--muted); font-size: .82rem; }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+    .panel h3 { margin: 0 0 12px; }
+    .dist-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .9rem; }
+    .dist-row .lbl { width: 160px; flex-shrink: 0; color: var(--muted); }
+    .bar { flex: 1; background: var(--line); border-radius: 999px; height: 14px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--orange); }
+    .dist-row .val { width: 36px; text-align: right; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 700; }
+    .table-wrap { overflow-x: auto; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 20px; }
+    .btn--sm { padding: 10px 16px; font-size: .9rem; }
+    .btn--ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .btn--danger { background: #c0392b; color: #fff; }
+    .empty { text-align: center; color: var(--muted); padding: 30px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .note-box { background: var(--orange-soft); border: 1px solid #ffd0ac; color: #8a4a1f; border-radius: 10px; padding: 12px 14px; font-size: .82rem; margin-bottom: 18px; }
+  </style>
+</head>
+<body>
+
+  <!-- Şifre kapısı -->
+  <div class="gate" id="gate">
+    <div class="funnel__stepwrap">
+      <h2>🔒 Yönetim Paneli</h2>
+      <p class="muted">Devam etmek için şifrenizi girin.</p>
+      <input id="pw" class="text-input" type="password" placeholder="Şifre" />
+      <button class="btn btn--cta" id="loginBtn" style="width:100%">Giriş</button>
+      <p id="pwErr" class="form-err" hidden>Hatalı şifre.</p>
+    </div>
+  </div>
+
+  <!-- Panel -->
+  <div class="admin" id="admin" hidden>
+    <div class="topbar">
+      <div>
+        <h1>📊 Lead Takip Paneli</h1>
+        <p class="muted">Dondurulmuş Meyve & Sebze İthalatı — CRM</p>
+      </div>
+      <a href="index.html" class="btn btn--ghost btn--sm">← Siteye dön</a>
+    </div>
+
+    <div class="note-box">
+      ℹ️ Bu panel yalnızca <b>bu tarayıcıda</b> oluşturulan ön teklifleri gösterir (localStorage).
+      Müşteriler asıl bilgiyi WhatsApp/e-posta ile gönderir. Verileri kalıcı tutmak için düzenli
+      <b>JSON/CSV dışa aktarma</b> yapın.
+    </div>
+
+    <div class="stat-grid" id="stats"></div>
+
+    <div class="toolbar">
+      <button class="btn btn--sm btn--ghost" id="exportCsv">⬇️ CSV indir</button>
+      <button class="btn btn--sm btn--ghost" id="exportJson">⬇️ JSON indir</button>
+      <button class="btn btn--sm btn--ghost" id="refresh">🔄 Yenile</button>
+      <button class="btn btn--sm btn--danger" id="clear">🗑️ Tümünü temizle</button>
+    </div>
+
+    <div class="panel">
+      <h3>Grup dağılımı</h3>
+      <div id="distClass"></div>
+    </div>
+    <div class="panel">
+      <h3>Ürün dağılımı</h3>
+      <div id="distProduct"></div>
+    </div>
+    <div class="panel">
+      <h3>Tonaj & Bütçe dağılımı</h3>
+      <div id="distTonnage"></div>
+      <div style="height:10px"></div>
+      <div id="distBudget"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Tüm Lead'ler</h3>
+      <div class="table-wrap"><table id="leadTable"></table></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
