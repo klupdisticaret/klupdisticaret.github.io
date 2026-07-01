@@ -46,13 +46,22 @@ async function sbInsertLead(p) {
   } catch (e) { console.warn("Supabase insert exception:", e); }
 }
 
-// Seçilen toplantı saatini günceller.
+// Seçilen toplantı saatini günceller + durumu "Toplantı Planlandı" yapar.
 async function sbUpdateSlot(p) {
   if (!sb) return;
   try {
     const { error } = await sb.from("leads")
-      .update({ selected_slot: p.selectedSlot })
+      .update({ selected_slot: p.selectedSlot, status: "Toplantı Planlandı" })
       .eq("ref_no", p.refNo);
     if (error) console.warn("Supabase update hata:", error.message);
   } catch (e) { console.warn("Supabase update exception:", e); }
+}
+
+// ADMIN: lead durum/not günceller (giriş yapılmış olmalı). id ile.
+async function sbAdminUpdate(id, fields) {
+  if (!sb) return { error: "Supabase yok" };
+  try {
+    const { error } = await sb.from("leads").update(fields).eq("id", id);
+    return { error: error ? error.message : null };
+  } catch (e) { return { error: String(e) }; }
 }

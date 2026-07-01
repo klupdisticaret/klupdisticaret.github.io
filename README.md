@@ -10,7 +10,12 @@ Sunucu gerektirmez (saf HTML/CSS/JS). **GitHub Pages** ile ücretsiz yayınlanı
 4. **Ön teklif** ekranı + grup bazlı ön fiyat aralığı
 5. Gönderim: **WhatsApp** • **E-posta** • **PDF indir**
 6. Sadece Sıcak/VIP leadlere **toplantı saati** seçimi + Google Takvime ekle
-7. Size özel **admin paneli** (`admin.html`) — leadleri ve istatistikleri gösterir
+7. Leadler merkezi **Supabase** veritabanına kaydolur (tüm cihazlardan)
+8. Size özel **admin paneli** (`admin.html`) — Supabase girişiyle: leadler, istatistikler,
+   **müşteri kartı** (CRM) ve **süreç takibi** (Teklif → Toplantı → Sipariş → Kalite Kontrol
+   → Sevkiyat → Teslimat)
+
+> Supabase kurulumu için: **SUPABASE-KURULUM.md** (SQL + admin kullanıcısı).
 
 ## Dosyalar
 ```
@@ -23,14 +28,16 @@ js/scoring.js    Lead puanlama + fiyat mantığı
 js/proposal.js   Teklif + WhatsApp/e-posta/takvim linkleri
 js/pdf.js        PDF teklif (jsPDF CDN)
 js/funnel.js     Adım yönetimi
-js/admin.js      Panel mantığı
+js/admin.js      Panel mantığı (CRM + süreç takibi)
+js/supabase.js   Merkezi veritabanı bağlantısı
+SUPABASE-KURULUM.md  Veritabanı kurulum rehberi (SQL)
 ```
 
 ## Ayarları değiştirme (`js/config.js`)
 Sadece bu dosyayı düzenlemeniz yeterli:
 - `WHATSAPP` — numaranız (ülke kodu + numara, başında `+` ve `0` olmadan). Örn: `0532 653 40 05` → `905326534005`
 - `EMAIL` — e-posta adresiniz
-- `ADMIN_PASSWORD` — admin paneli şifresi (varsayılan `klup2026`)
+- `SUPABASE_URL` / `SUPABASE_KEY` — merkezi veritabanı (publishable key)
 - `MEETING_SLOTS` — müsait toplantı gün/saatleri
 - `PRICE_TIERS` — **ön fiyat aralıkları (şu an örnek/placeholder — gerçek rakamlarınızı yazın)**
 - `SCORE_THRESHOLDS` — hangi puanda hangi lead sınıfı

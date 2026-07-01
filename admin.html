@@ -37,6 +37,52 @@
     .empty { text-align: center; color: var(--muted); padding: 30px; }
     .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .note-box { background: var(--orange-soft); border: 1px solid #ffd0ac; color: #8a4a1f; border-radius: 10px; padding: 12px 14px; font-size: .82rem; margin-bottom: 18px; }
+
+    /* Süreç durumu rozetleri */
+    .status-badge { padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; display: inline-block; }
+    .st-yeni      { background:#e3f0ff; color:#1d5fb0; }
+    .st-teklif    { background:#fff0d6; color:#9a6a00; }
+    .st-toplanti  { background:#e7e0ff; color:#5b3fb0; }
+    .st-gorusme   { background:#dcefff; color:#1462a8; }
+    .st-takip     { background:#fde9cc; color:#9a5a00; }
+    .st-kabul     { background:#dff5e6; color:#1a7a45; }
+    .st-sozlesme  { background:#d7f0e5; color:#127a58; }
+    .st-siparis   { background:#d5f0dd; color:#0f7a3d; }
+    .st-kalite    { background:#e6f7d9; color:#4a7a15; }
+    .st-sevkiyat  { background:#dff0d0; color:#3f7a10; }
+    .st-teslimat  { background:#cdeecd; color:#1c6b1c; }
+    .st-kayip     { background:#f1dede; color:#a33; }
+
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: var(--orange-soft); }
+    .row-hint { font-size:.78rem; color:var(--muted); margin:2px 0 10px; }
+
+    /* Modal / müşteri kartı */
+    .overlay { position: fixed; inset: 0; background: rgba(15,20,30,.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px 14px; overflow-y: auto; z-index: 50; }
+    .overlay[hidden] { display: none; }
+    .card-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 620px; box-shadow: var(--shadow); overflow: hidden; }
+    .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding: 18px 20px; background: var(--orange-soft); border-bottom:1px solid #ffd7bd; }
+    .card-head h2 { margin:0; font-size:1.2rem; }
+    .card-close { background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--muted); line-height:1; }
+    .card-body { padding: 18px 20px; }
+    .kv { display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; margin-bottom:16px; }
+    @media (max-width:520px){ .kv { grid-template-columns:1fr; } }
+    .kv > div { display:flex; flex-direction:column; }
+    .kv span { font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
+    .kv b { font-size:.95rem; word-break:break-word; }
+    /* Süreç zaman çizelgesi */
+    .pipeline { list-style:none; padding:0; margin:0 0 16px; }
+    .pipeline li { display:flex; align-items:center; gap:10px; padding:5px 0; font-size:.9rem; color:var(--muted); }
+    .pipeline li .dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; }
+    .pipeline li.done { color:var(--ink); font-weight:600; }
+    .pipeline li.done .dot { background:var(--ok); border-color:var(--ok); color:#fff; }
+    .pipeline li.current .dot { border-color:var(--orange); background:var(--orange); color:#fff; }
+    .pipeline li.current { color:var(--orange-dark); font-weight:700; }
+    .field-label { font-size:.8rem; font-weight:700; color:var(--muted); display:block; margin:10px 0 6px; }
+    .card-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    textarea.text-input { min-height:70px; resize:vertical; font-family:inherit; }
+    select.text-input { appearance:auto; }
+    .save-ok { color:var(--ok); font-weight:600; font-size:.85rem; }
   </style>
 </head>
 <body>
@@ -79,6 +125,10 @@
     </div>
 
     <div class="panel">
+      <h3>Süreç durumu (Takip & Sipariş)</h3>
+      <div id="distStatus"></div>
+    </div>
+    <div class="panel">
       <h3>Grup dağılımı</h3>
       <div id="distClass"></div>
     </div>
@@ -95,7 +145,22 @@
 
     <div class="panel">
       <h3>Tüm Lead'ler</h3>
+      <p class="row-hint">👉 Detay, süreç durumu ve not için bir satıra tıklayın.</p>
       <div class="table-wrap"><table id="leadTable"></table></div>
+    </div>
+  </div>
+
+  <!-- Müşteri Kartı (CRM) modalı -->
+  <div class="overlay" id="overlay" hidden>
+    <div class="card-modal" role="dialog" aria-modal="true">
+      <div class="card-head">
+        <div>
+          <h2 id="cardTitle">Müşteri Kartı</h2>
+          <p class="muted" id="cardRef" style="margin:2px 0 0"></p>
+        </div>
+        <button class="card-close" id="cardClose" aria-label="Kapat">✕</button>
+      </div>
+      <div class="card-body" id="cardBody"></div>
     </div>
   </div>
 
