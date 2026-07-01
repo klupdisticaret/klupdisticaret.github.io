@@ -198,7 +198,6 @@ function renderContact() {
       <label>Firma adı*<input id="f_company" class="text-input" value="${esc(state.company)}" required></label>
       <label>Yetkili kişi*<input id="f_contact" class="text-input" value="${esc(state.contact)}" required></label>
       <label>Telefon*<input id="f_phone" class="text-input" type="tel" value="${esc(state.phone)}" required></label>
-      <label>WhatsApp<input id="f_whatsapp" class="text-input" type="tel" value="${esc(state.whatsapp)}"></label>
       <label>E-posta*<input id="f_email" class="text-input" type="email" value="${esc(state.email)}" required></label>
       <label>Ülke / şehir<input id="f_location" class="text-input" value="${esc(state.location)}"></label>
       <label class="full">Teslimat limanı veya lokasyon<input id="f_port" class="text-input" value="${esc(state.port)}"></label>
@@ -209,7 +208,7 @@ function renderContact() {
   ensureNextButton(wrap, true, "Ön Teklifimi Oluştur");
 
   // canlı kayıt
-  const map = { f_company:"company", f_contact:"contact", f_phone:"phone", f_whatsapp:"whatsapp",
+  const map = { f_company:"company", f_contact:"contact", f_phone:"phone",
                 f_email:"email", f_location:"location", f_port:"port" };
   Object.entries(map).forEach(([id, key]) => {
     wrap.querySelector("#" + id).addEventListener("input", e => state[key] = e.target.value);
