@@ -236,6 +236,10 @@ body {
   font-weight: 600;
 }
 .suggestion:hover { background: #dceaf6; }
+.add-other { display: flex; gap: 8px; margin-top: 16px; }
+.add-other .text-input { flex: 1; }
+.btn--add { background: var(--ink); color: #fff; padding: 0 20px; white-space: nowrap; }
+.btn--add:hover { filter: brightness(1.1); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .chip {
   display: inline-flex;

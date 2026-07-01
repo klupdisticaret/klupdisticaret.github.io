@@ -118,72 +118,80 @@ function renderGroup() {
   els.content.appendChild(wrap);
 }
 
-// --- Adım: Ürün adı (otomatik öneri + chip) ---
+// --- Adım: Ürün seçimi (tıklanabilir seçenekler) ---
 function renderProducts() {
   const wrap = document.createElement("div");
   wrap.className = "step";
   wrap.innerHTML = `
     <h2 class="step__q">Hangi ürünleri ithal etmek istiyorsunuz?</h2>
-    <p class="step__hint">Yazmaya başlayın, sistem önerir. Listede olmayan ürünü yazıp Enter'a basın.</p>
-    <div class="autocomplete">
-      <input id="prodInput" class="text-input" type="text" placeholder="Örn: ahu... / mı... / brokoli" autocomplete="off" />
-      <div id="suggestions" class="suggestions"></div>
+    <p class="step__hint">Ürünlere tıklayarak seçin (birden fazla seçebilirsiniz).</p>
+    <div class="choice-grid choice-grid--3" id="prodOptions"></div>
+    <div class="add-other">
+      <input id="prodInput" class="text-input" type="text" placeholder="Listede yoksa yazıp ekleyin (özellikle sebzeler)" autocomplete="off" />
+      <button type="button" class="btn btn--add" id="addBtn">+ Ekle</button>
     </div>
     <div id="chips" class="chips"></div>
   `;
   els.content.appendChild(wrap);
 
+  const optWrap = wrap.querySelector("#prodOptions");
   const input = wrap.querySelector("#prodInput");
-  const sug = wrap.querySelector("#suggestions");
+  const addBtn = wrap.querySelector("#addBtn");
   const chips = wrap.querySelector("#chips");
 
+  // Seçilen gruba göre bilinen ürünler
+  let pool = PRODUCTS;
+  if (state.group === "meyve") pool = PRODUCTS.filter(p => p.type === "meyve");
+  else if (state.group === "sebze") pool = PRODUCTS.filter(p => p.type === "sebze");
+  const known = pool.map(p => p.name);
+
+  const eq = (a, b) => a.toLocaleLowerCase("tr") === b.toLocaleLowerCase("tr");
+  const isSelected = (name) => state.products.some(p => eq(p, name));
+
+  const renderOptions = () => {
+    optWrap.innerHTML = "";
+    known.forEach(name => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice" + (isSelected(name) ? " is-active" : "");
+      b.textContent = name;
+      b.addEventListener("click", () => {
+        if (isSelected(name)) state.products = state.products.filter(p => !eq(p, name));
+        else state.products.push(name);
+        renderOptions(); renderChips();
+      });
+      optWrap.appendChild(b);
+    });
+  };
+
   const renderChips = () => {
-    chips.innerHTML = "";
-    state.products.forEach((p, i) => {
+    // yalnızca listede olmayan (elle eklenen) ürünler chip olarak gösterilir
+    const custom = state.products.filter(p => !known.some(k => eq(k, p)));
+    chips.innerHTML = custom.length
+      ? `<p class="step__hint" style="margin:12px 0 8px">Eklediğiniz diğer ürünler:</p>` : "";
+    custom.forEach(p => {
       const c = document.createElement("span");
       c.className = "chip";
-      c.innerHTML = `${p} <button aria-label="kaldır">✕</button>`;
+      c.innerHTML = `${esc(p)} <button aria-label="kaldır">✕</button>`;
       c.querySelector("button").addEventListener("click", () => {
-        state.products.splice(i, 1); renderChips();
+        state.products = state.products.filter(x => x !== p);
+        renderOptions(); renderChips();
       });
       chips.appendChild(c);
     });
     ensureNextButton(wrap, state.products.length > 0);
   };
 
-  const addProduct = (name) => {
-    name = name.trim();
+  const addCustom = () => {
+    const name = input.value.trim();
     if (!name) return;
-    if (!state.products.some(p => p.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))) {
-      state.products.push(name);
-    }
-    input.value = ""; sug.innerHTML = ""; renderChips(); input.focus();
+    if (!isSelected(name)) state.products.push(name);
+    input.value = ""; renderOptions(); renderChips(); input.focus();
   };
+  addBtn.addEventListener("click", addCustom);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } });
 
-  input.addEventListener("input", () => {
-    const list = suggestProducts(input.value, state.group);
-    sug.innerHTML = "";
-    list.forEach(name => {
-      const item = document.createElement("button");
-      item.className = "suggestion";
-      item.textContent = name;
-      item.addEventListener("click", () => addProduct(name));
-      sug.appendChild(item);
-    });
-  });
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const first = sug.querySelector(".suggestion");
-      if (first && normalizeTR(input.value) && normalizeTR(first.textContent).startsWith(normalizeTR(input.value))) {
-        addProduct(first.textContent);
-      } else {
-        addProduct(input.value);
-      }
-    }
-  });
-
+  renderOptions();
   renderChips();
 }
 
