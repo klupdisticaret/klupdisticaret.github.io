@@ -33,9 +33,8 @@ const SCORE_MAP = {
 };
 
 const has = (v) => !!(v && String(v).trim().length);
-function hasFirma(s)      { return has(s.company); }
-function hasContact(s)    { return has(s.phone) || has(s.whatsapp); } // WhatsApp butonu için
-function hasPhoneAndWa(s) { return has(s.phone) && has(s.whatsapp); }
+function hasFirma(s)   { return has(s.company); }
+function hasContact(s) { return has(s.phone) || has(s.whatsapp); } // WhatsApp butonu için
 
 // Toplam puan
 function scoreLead(state) {
@@ -43,8 +42,8 @@ function scoreLead(state) {
   s += SCORE_MAP.tonnage[state.tonnage]      || 0;
   s += SCORE_MAP.timing[state.timing]         || 0;
   s += SCORE_MAP.experience[state.experience] || 0;
-  if (hasFirma(state))      s += 15; // firma bilgisi doluysa
-  if (hasPhoneAndWa(state)) s += 15; // telefon ve whatsapp doluysa
+  if (hasFirma(state))    s += 15; // firma bilgisi doluysa
+  if (has(state.phone))   s += 15; // telefon doluysa (iletişim bilgisi)
   return s;
 }
 

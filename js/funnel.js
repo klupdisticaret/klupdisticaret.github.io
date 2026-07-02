@@ -248,7 +248,6 @@ function renderContact() {
       <label class="bold">Şirket adı*<input id="f_company" class="text-input" value="${esc(state.company)}" required></label>
       <label class="bold">Yetkili kişi*<input id="f_contact" class="text-input" value="${esc(state.contact)}" required></label>
       <label class="bold">Telefon*<input id="f_phone" class="text-input" type="tel" value="${esc(state.phone)}" required></label>
-      <label class="bold">WhatsApp<input id="f_whatsapp" class="text-input" type="tel" value="${esc(state.whatsapp)}" placeholder="Varsa WhatsApp numaranız"></label>
       <label class="bold">Şehir*<input id="f_location" class="text-input" list="cityList" value="${esc(state.location)}" placeholder="Örn: İzmir" required><datalist id="cityList">${cityOpts}</datalist></label>
       <label class="bold">Liman<input id="f_port" class="text-input" list="portList" value="${esc(state.port)}" placeholder="Opsiyonel"><datalist id="portList">${portOpts}</datalist></label>
     </div>
@@ -259,7 +258,7 @@ function renderContact() {
 
   // canlı kayıt + hatırlama
   const map = { f_company:"company", f_contact:"contact", f_phone:"phone",
-                f_whatsapp:"whatsapp", f_location:"location", f_port:"port" };
+                f_location:"location", f_port:"port" };
   Object.entries(map).forEach(([id, key]) => {
     wrap.querySelector("#" + id).addEventListener("input", e => { state[key] = e.target.value; saveDraft(); });
   });
