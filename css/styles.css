@@ -76,11 +76,11 @@ body {
 .hero__photo {
   display: block;
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto 24px;
   border-radius: 16px;
   box-shadow: var(--shadow);
-  border: 3px solid #fff;
+  border: 4px solid #fff;
 }
 .badges {
   display: flex;
@@ -101,7 +101,7 @@ body {
   font-size: .82rem;
   font-weight: 600;
 }
-.hero__note { color: var(--muted); font-size: .82rem; margin: 14px 0 0; }
+.hero__note { color: var(--ink); font-size: 1rem; font-weight: 600; margin: 16px 0 0; }
 
 /* ---------------- BUTTONS ---------------- */
 .btn {
@@ -178,9 +178,17 @@ body {
   margin-bottom: 14px;
 }
 .link-back {
-  background: none; border: none; color: var(--orange);
-  cursor: pointer; font-weight: 600; font-size: .85rem;
+  background: var(--orange-soft);
+  border: 2px solid #ffd0ac;
+  color: var(--orange-dark);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 10px 18px;
+  border-radius: 10px;
+  min-height: 44px;
 }
+.link-back:hover { background: #ffe6d3; }
 
 .step__q { font-size: 1.35rem; margin: 0 0 6px; font-weight: 800; }
 .step__hint { color: var(--muted); margin: 0 0 18px; font-size: .92rem; }
@@ -265,6 +273,7 @@ body {
   display: flex; flex-direction: column; gap: 6px;
   font-size: .85rem; font-weight: 600; color: var(--muted);
 }
+.form-grid label.bold { font-size: .95rem; font-weight: 800; color: var(--ink); }
 .form-grid label.full { grid-column: 1 / -1; }
 .form-grid input { font-weight: 400; }
 .form-err { color: #c0392b; font-size: .88rem; margin-top: 12px; }
@@ -277,7 +286,7 @@ body {
 .proposal__head h2 { margin: 0 0 2px; font-size: 1.4rem; }
 .lead-badge {
   padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: .82rem;
-  white-space: nowrap;
+  text-align: center;
 }
 .lead-vip    { background: #fdeacc; color: #8a5a00; border: 1px solid #f3c879; }
 .lead-hot    { background: #ffe0d6; color: #b23a14; border: 1px solid #ffb59c; }
@@ -312,8 +321,16 @@ body {
   margin-bottom: 20px;
 }
 
+/* Gruba göre ekran mesajı (yeşil kutu — fiyatın yerine) */
+.info-box {
+  background: #e9f9f0; border: 1px solid #b9e8cd; color: #15603c;
+  border-radius: 12px; padding: 16px 18px; font-weight: 600;
+  font-size: .98rem; line-height: 1.5; margin-bottom: 18px;
+}
+
 .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
-@media (min-width: 520px) { .actions { grid-template-columns: 1fr 1fr 1fr; } }
+.actions--single { grid-template-columns: 1fr; }
+.btn--wa { font-size: 1.05rem; padding: 16px 22px; }
 
 /* meeting */
 .meeting, .meeting-note { margin-top: 22px; }
@@ -348,4 +365,23 @@ body {
   0%,100% { transform: translateX(0); }
   25% { transform: translateX(-6px); }
   75% { transform: translateX(6px); }
+}
+
+/* ---------------- MOBİL (Aa.txt madde 16) ---------------- */
+@media (max-width: 560px) {
+  /* Sayfa biraz yukarı, mobil uygulama hissi; içerik alta taşmasın */
+  .hero {
+    min-height: auto;
+    align-items: flex-start;
+    padding: 18px 14px 32px;
+  }
+  .hero__inner { padding: 24px 18px; border-radius: 20px; }
+  .hero__title { font-size: 1.7rem; }
+  /* Anasayfadaki meyve fotoğrafı biraz büyütülsün */
+  .hero__photo { max-width: 100%; margin-bottom: 20px; }
+
+  .funnel { min-height: auto; padding: 16px 14px 48px; }
+  /* Tonaj/bütçe gibi soruların üstüne biraz nefes payı */
+  .step__q { margin-top: 8px; }
+  .btn--cta { width: 100%; }
 }

@@ -1,8 +1,8 @@
 /* =============================================================
-   YÖNETİM PANELİ (CRM)
+   YÖNETİM PANELİ (CRM)  — Aa.txt madde 17,18,19,20
    Supabase hesabıyla giriş → merkezi leadler.
-   Müşteri kartı: tüm bilgiler + süreç durumu (takip/sipariş) + not.
-   Supabase yoksa/okunamazsa yerel (localStorage) veriye düşer.
+   Müşteri kartı: tüm bilgiler + durum + admin notu + takip tarihi.
+   Filtreler + durum dağılımı. Supabase yoksa localStorage yedeği.
    ============================================================= */
 
 const STORAGE_KEY = "klup_leads";
@@ -10,31 +10,41 @@ const gate = document.getElementById("gate");
 const admin = document.getElementById("admin");
 const pwErr = document.getElementById("pwErr");
 let CACHE = [];
+let activeFilter = "all";
 
-// Süreç aşamaları (Takip & Bildirimler + Anlaşma & Sipariş Süreci)
-const STATUS_STAGES = [
-  "Yeni",
-  "Teklif Gönderildi",
-  "Toplantı Planlandı",
-  "Görüşme Yapıldı",
-  "Teklif Takipte",
-  "Teklif Kabul Edildi",
-  "Sözleşme İmzalandı",
-  "Sipariş Oluşturuldu",
-  "Kalite Kontrol",
-  "Sevkiyat Planlandı",
-  "Teslimat Tamamlandı",
+// Lead durumları (madde 18)
+const STATUSES = [
+  "Yeni lead", "İncelenecek", "WhatsApp'a yönlendirildi", "Manuel aranacak",
+  "Toplantı açılabilir", "Toplantı planlandı", "Görüşme yapıldı", "Beklemede",
+  "Siparişe döndü", "Uygun değil",
 ];
-const STATUS_LOST = "Kaybedildi";
-
+function normStatus(s) {
+  if (!s || s === "Yeni") return "Yeni lead";
+  if (s === "Toplantı Planlandı") return "Toplantı planlandı"; // eski kayıt uyumu
+  return s;
+}
 function statusClass(s) {
   return {
-    "Yeni": "st-yeni", "Teklif Gönderildi": "st-teklif", "Toplantı Planlandı": "st-toplanti",
-    "Görüşme Yapıldı": "st-gorusme", "Teklif Takipte": "st-takip", "Teklif Kabul Edildi": "st-kabul",
-    "Sözleşme İmzalandı": "st-sozlesme", "Sipariş Oluşturuldu": "st-siparis", "Kalite Kontrol": "st-kalite",
-    "Sevkiyat Planlandı": "st-sevkiyat", "Teslimat Tamamlandı": "st-teslimat", [STATUS_LOST]: "st-kayip",
+    "Yeni lead": "st-yeni", "İncelenecek": "st-teklif", "WhatsApp'a yönlendirildi": "st-toplanti",
+    "Manuel aranacak": "st-takip", "Toplantı açılabilir": "st-gorusme", "Toplantı planlandı": "st-sozlesme",
+    "Görüşme yapıldı": "st-siparis", "Beklemede": "st-kalite", "Siparişe döndü": "st-teslimat",
+    "Uygun değil": "st-kayip",
   }[s] || "st-yeni";
 }
+
+// Filtre tanımları (madde 19)
+const FILTERS = [
+  { key: "all",   label: "Tümü",              test: () => true },
+  { key: "t1",    label: "1–5 ton",           test: l => l.tonnage === "1–5 ton" },
+  { key: "t2",    label: "10–15 ton",         test: l => l.tonnage === "10–15 ton" },
+  { key: "t3",    label: "20–25 ton (Sıcak)", test: l => l.tonnage === "20–25 ton" },
+  { key: "t4",    label: "25+ ton (VIP)",     test: l => l.tonnage === "25 ton üzeri" },
+  { key: "wa",    label: "WhatsApp'a yönlenen", test: l => l.waShown || l.status === "WhatsApp'a yönlendirildi" },
+  { key: "meet",  label: "Toplantı planlayan", test: l => !!l.selectedSlot || l.status === "Toplantı planlandı" },
+  { key: "call",  label: "Manuel aranacak",   test: l => l.status === "Manuel aranacak" },
+  { key: "wait",  label: "Bekleyenler",       test: l => l.status === "Beklemede" },
+  { key: "order", label: "Siparişe dönenler", test: l => l.status === "Siparişe döndü" },
+];
 
 /* --- Giriş / oturum --- */
 async function tryLogin() {
@@ -50,7 +60,7 @@ async function logout() {
   if (sb) { try { await sb.auth.signOut(); } catch (e) {} }
   location.reload();
 }
-function showPanel() { gate.hidden = true; admin.hidden = false; renderAll(); }
+function showPanel() { gate.hidden = true; admin.hidden = false; renderFilters(); renderAll(); }
 
 document.getElementById("loginBtn").addEventListener("click", tryLogin);
 document.getElementById("pw").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
@@ -71,14 +81,18 @@ function rowToLead(r) {
     tonnage: r.tonnage, budget: r.budget, timing: r.timing, experience: r.experience,
     company: r.company, contact: r.contact, phone: r.phone, whatsapp: r.whatsapp,
     email: r.email, location: r.location, port: r.port,
-    score: r.score, klass: r.klass, selectedSlot: r.selected_slot,
-    status: r.status || "Yeni", notes: r.notes || "",
+    score: r.score, klass: r.klass, leadGroup: r.lead_group,
+    waShown: r.wa_shown, meetingShown: r.meeting_shown,
+    selectedSlot: r.selected_slot, status: normStatus(r.status),
+    notes: r.notes || "", nextFollowup: r.next_followup || "",
   };
 }
 function localLeads() {
   try {
-    return (JSON.parse(localStorage.getItem(STORAGE_KEY)) || [])
-      .map(l => Object.assign({ status: "Yeni", notes: "" }, l));
+    return (JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(l =>
+      Object.assign({ status: "Yeni lead", notes: "", nextFollowup: "",
+        leadGroup: l.leadGroup, waShown: l.showWhatsapp, meetingShown: l.showMeeting },
+        l, { status: normStatus(l.status) }));
   } catch (e) { return []; }
 }
 
@@ -91,8 +105,7 @@ async function loadLeads() {
         "SUPABASE-KURULUM.md'deki SQL'i çalıştırdın mı? (Şimdilik bu tarayıcıdaki kayıtlar gösteriliyor.)";
       return localLeads();
     }
-    note.innerHTML = "✅ Merkezi veritabanı (Supabase) — tüm cihazlardan gelen <b>" +
-      data.length + "</b> lead. Yedek için CSV/JSON indirin.";
+    note.innerHTML = "✅ Merkezi veritabanı (Supabase) — toplam <b>" + data.length + "</b> lead.";
     return data.map(rowToLead);
   }
   note.innerHTML = "ℹ️ Supabase bağlı değil; yalnızca bu tarayıcıdaki kayıtlar gösteriliyor.";
@@ -107,7 +120,31 @@ async function renderAll() {
   renderProductDist(CACHE);
   renderFieldDist("distTonnage", CACHE, "tonnage");
   renderFieldDist("distBudget", CACHE, "budget");
-  renderTable(CACHE);
+  renderTable(getFiltered());
+}
+
+function getFiltered() {
+  const f = FILTERS.find(x => x.key === activeFilter) || FILTERS[0];
+  return CACHE.filter(f.test);
+}
+
+/* --- Filtre butonları (madde 19) --- */
+function renderFilters() {
+  const bar = document.getElementById("filters");
+  if (!bar) return;
+  bar.innerHTML = "";
+  FILTERS.forEach(f => {
+    const b = document.createElement("button");
+    b.className = "filter-btn" + (f.key === activeFilter ? " is-active" : "");
+    b.textContent = f.label;
+    b.addEventListener("click", () => {
+      activeFilter = f.key;
+      bar.querySelectorAll(".filter-btn").forEach(x => x.classList.remove("is-active"));
+      b.classList.add("is-active");
+      renderTable(getFiltered());
+    });
+    bar.appendChild(b);
+  });
 }
 
 /* --- İstatistikler --- */
@@ -115,7 +152,7 @@ function renderStats(leads) {
   const total = leads.length;
   const hotVip = leads.filter(l => l.klass === "Sıcak Lead" || l.klass === "VIP Lead").length;
   const meetings = leads.filter(l => l.selectedSlot).length;
-  const orders = leads.filter(l => ["Sipariş Oluşturuldu","Kalite Kontrol","Sevkiyat Planlandı","Teslimat Tamamlandı"].includes(l.status)).length;
+  const orders = leads.filter(l => l.status === "Siparişe döndü").length;
   const stats = [
     ["Toplam Lead", total],
     ["Sıcak + VIP", hotVip],
@@ -138,12 +175,11 @@ function distBars(containerId, pairs) {
     : `<p class="empty">Veri yok.</p>`;
 }
 function renderStatusDist(leads) {
-  const stages = [...STATUS_STAGES, STATUS_LOST];
-  const pairs = stages.map(s => [s, leads.filter(l => l.status === s).length]).filter(p => p[1] > 0);
+  const pairs = STATUSES.map(s => [s, leads.filter(l => l.status === s).length]).filter(p => p[1] > 0);
   distBars("distStatus", pairs);
 }
 function renderClassDist(leads) {
-  const order = ["VIP Lead", "Sıcak Lead", "Takip Edilecek Lead", "Düşük Lead"];
+  const order = ["VIP Lead", "Sıcak Lead", "Takip Edilecek Lead", "Düşük Öncelikli Lead"];
   distBars("distClass", order.map(k => [k, leads.filter(l => l.klass === k).length]));
 }
 function renderProductDist(leads) {
@@ -161,17 +197,16 @@ function renderFieldDist(containerId, leads, field) {
 function renderTable(leads) {
   const table = document.getElementById("leadTable");
   if (!leads.length) {
-    table.innerHTML = `<tr><td class="empty">Henüz lead yok.</td></tr>`;
+    table.innerHTML = `<tr><td class="empty">Bu filtrede lead yok.</td></tr>`;
     return;
   }
   const head = `<tr>
-    <th>Tarih</th><th>Firma</th><th>Yetkili</th><th>Grup</th><th>Ürünler</th>
-    <th>Tonaj</th><th>Sınıf</th><th>Süreç</th><th>Telefon</th></tr>`;
+    <th>Tarih</th><th>Firma</th><th>Grup</th><th>Ürünler</th>
+    <th>Tonaj</th><th>Sınıf</th><th>Durum</th><th>Telefon</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td>${escapeHtml(l.company)}</td>
-    <td>${escapeHtml(l.contact)}</td>
-    <td>${escapeHtml(l.group)}</td>
+    <td>${escapeHtml(l.leadGroup || "-")}</td>
     <td>${escapeHtml((l.products || []).join(", "))}</td>
     <td>${escapeHtml(l.tonnage)}</td>
     <td><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(l.klass)}</span></td>
@@ -184,7 +219,7 @@ function renderTable(leads) {
   });
 }
 
-/* --- Müşteri Kartı (CRM) modalı --- */
+/* --- Müşteri Kartı (CRM) --- */
 const overlay = document.getElementById("overlay");
 document.getElementById("cardClose").addEventListener("click", closeCard);
 overlay.addEventListener("click", e => { if (e.target === overlay) closeCard(); });
@@ -194,47 +229,46 @@ function closeCard() { overlay.hidden = true; }
 function openCard(lead) {
   document.getElementById("cardTitle").textContent = lead.company || lead.contact || "Müşteri Kartı";
   document.getElementById("cardRef").textContent =
-    (lead.refNo ? "Teklif No: " + lead.refNo + "  •  " : "") +
+    (lead.refNo ? "Talep No: " + lead.refNo + "  •  " : "") +
     (lead.createdAt ? new Date(lead.createdAt).toLocaleString("tr-TR") : "");
 
   const kv = (s, v) => `<div><span>${s}</span><b>${escapeHtml(v || "-")}</b></div>`;
-  const currentIdx = STATUS_STAGES.indexOf(lead.status);
-
-  const pipeline = STATUS_STAGES.map((s, i) => {
-    const cls = i < currentIdx ? "done" : (i === currentIdx ? "current" : "");
-    const mark = i < currentIdx ? "✓" : (i === currentIdx ? "●" : (i + 1));
-    return `<li class="${cls}"><span class="dot">${mark}</span>${escapeHtml(s)}</li>`;
-  }).join("");
-
-  const options = [...STATUS_STAGES, STATUS_LOST]
+  const yn = (v) => v ? "Evet" : "Hayır";
+  const options = STATUSES
     .map(s => `<option value="${escapeHtml(s)}"${s === lead.status ? " selected" : ""}>${escapeHtml(s)}</option>`).join("");
 
   document.getElementById("cardBody").innerHTML = `
     <div class="kv">
-      ${kv("Ürün grubu", lead.group)}
-      ${kv("Seçilen ürünler", (lead.products || []).join(", "))}
-      ${kv("Tahmini tonaj", lead.tonnage)}
+      ${kv("Ad soyad (yetkili)", lead.contact)}
+      ${kv("Firma adı", lead.company)}
+      ${kv("Telefon", lead.phone)}
+      ${kv("WhatsApp", lead.whatsapp)}
+      ${kv("Şehir", lead.location)}
+      ${kv("Liman", lead.port)}
+      ${kv("Ürün tipi", lead.group)}
+      ${kv("Girilen ürünler", (lead.products || []).join(", "))}
+      ${kv("Tonaj", lead.tonnage)}
       ${kv("Bütçe", lead.budget)}
       ${kv("İthalat zamanı", lead.timing)}
-      ${kv("Tecrübe", lead.experience)}
-      ${kv("Lead sınıfı", lead.klass)}
+      ${kv("Daha önce ithalat?", lead.experience)}
+      ${kv("Lead grubu", lead.leadGroup)}
+      ${kv("Lead etiketi", lead.klass)}
       ${kv("Lead puanı", lead.score == null ? "-" : String(lead.score))}
-      ${kv("Yetkili", lead.contact)}
-      ${kv("Telefon", lead.phone)}
-      ${kv("E-posta", lead.email)}
-      ${kv("Ülke / şehir", lead.location)}
-      ${kv("Teslim limanı", lead.port)}
+      ${kv("WhatsApp gösterildi mi?", yn(lead.waShown))}
+      ${kv("Toplantı gösterildi mi?", yn(lead.meetingShown))}
       ${kv("Seçilen görüşme", lead.selectedSlot)}
     </div>
 
-    <span class="field-label">Süreç aşamaları</span>
-    <ul class="pipeline">${pipeline}</ul>
+    ${lead.tonnage === "20–25 ton" ? `<div class="manual-note">ℹ️ 20–25 ton (Sıcak) lead — toplantı otomatik açılmaz. Uygunsa durumu <b>"Toplantı açılabilir"</b> yapıp müşteriye WhatsApp'tan görüşme linki gönderebilirsiniz.</div>` : ""}
 
-    <span class="field-label" for="stSelect">Durumu güncelle</span>
+    <span class="field-label">Lead durumu</span>
     <select id="stSelect" class="text-input">${options}</select>
 
-    <span class="field-label">Takip notları</span>
-    <textarea id="stNotes" class="text-input" placeholder="Görüşme notu, teklif detayı, hatırlatma...">${escapeHtml(lead.notes || "")}</textarea>
+    <span class="field-label">Sonraki takip tarihi</span>
+    <input id="stFollow" class="text-input" type="date" value="${escapeHtml(lead.nextFollowup || "")}">
+
+    <span class="field-label">Admin notu</span>
+    <textarea id="stNotes" class="text-input" placeholder="Görüşme notu, hatırlatma, teklif detayı...">${escapeHtml(lead.notes || "")}</textarea>
 
     <div class="card-actions">
       <button class="btn btn--cta" id="stSave" style="flex:1">💾 Kaydet</button>
@@ -243,11 +277,10 @@ function openCard(lead) {
     <p id="stMsg" style="margin:10px 0 0"></p>
   `;
 
-  // WhatsApp hızlı erişim (müşterinin telefonuna)
-  const waNum = (lead.phone || "").replace(/[^0-9]/g, "").replace(/^0/, "90");
+  const waNum = ((lead.whatsapp || lead.phone) || "").replace(/[^0-9]/g, "").replace(/^0/, "90");
   const waBtn = document.getElementById("stWa");
   if (waNum.length >= 10) waBtn.href = "https://wa.me/" + waNum;
-  else { waBtn.style.display = "none"; }
+  else waBtn.style.display = "none";
 
   document.getElementById("stSave").addEventListener("click", () => saveCard(lead));
   overlay.hidden = false;
@@ -256,31 +289,33 @@ function openCard(lead) {
 async function saveCard(lead) {
   const status = document.getElementById("stSelect").value;
   const notes = document.getElementById("stNotes").value;
+  const nextFollowup = document.getElementById("stFollow").value;
   const msg = document.getElementById("stMsg");
-  lead.status = status; lead.notes = notes;
+  lead.status = status; lead.notes = notes; lead.nextFollowup = nextFollowup;
 
   if (sb && lead.id != null) {
     msg.textContent = "Kaydediliyor…"; msg.className = "muted";
-    const { error } = await sbAdminUpdate(lead.id, { status, notes });
+    const { error } = await sbAdminUpdate(lead.id, { status, notes, next_followup: nextFollowup || null });
     if (error) { msg.textContent = "Hata: " + error; msg.className = "form-err"; return; }
     msg.textContent = "✓ Kaydedildi"; msg.className = "save-ok";
   } else {
-    // yerel yedek (localStorage)
     try {
       const arr = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
       const i = arr.findIndex(x => x.refNo === lead.refNo);
-      if (i >= 0) { arr[i].status = status; arr[i].notes = notes; localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+      if (i >= 0) { arr[i].status = status; arr[i].notes = notes; arr[i].nextFollowup = nextFollowup;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
     } catch (e) {}
     msg.textContent = "✓ Kaydedildi (yerel)"; msg.className = "save-ok";
   }
-  renderAll(); // tablo & dağılımları tazele
+  renderStatusDist(CACHE); renderStats(CACHE); renderTable(getFiltered());
 }
 
 /* --- Dışa aktarma --- */
 function exportJSON() { download("leadler.json", JSON.stringify(CACHE, null, 2), "application/json"); }
 function exportCSV() {
-  const cols = ["createdAt","refNo","company","contact","phone","email","location","port",
-                "group","products","tonnage","budget","timing","experience","klass","score","selectedSlot","status","notes"];
+  const cols = ["createdAt","refNo","company","contact","phone","whatsapp","location","port",
+                "group","products","tonnage","budget","timing","experience","leadGroup","klass","score",
+                "selectedSlot","status","nextFollowup","notes"];
   const rows = CACHE.map(l => cols.map(c => {
     let v = l[c];
     if (Array.isArray(v)) v = v.join(" | ");
@@ -305,5 +340,8 @@ function escapeHtml(s) {
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 function cssClass(klass) {
-  return { "VIP Lead":"vip","Sıcak Lead":"hot","Takip Edilecek Lead":"follow","Düşük Lead":"low" }[klass] || "low";
+  return {
+    "VIP Lead":"vip", "Sıcak Lead":"hot", "Takip Edilecek Lead":"follow",
+    "Düşük Öncelikli Lead":"low", "Düşük Lead":"low",
+  }[klass] || "low";
 }

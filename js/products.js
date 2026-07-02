@@ -4,28 +4,32 @@
    serbestçe yazabilir (özellikle sebzeler).
    ============================================================= */
 
-// Bilinen ürünler (reklam görselindeki liste). İstediğinizi ekleyip çıkarabilirsiniz.
+// Bilinen ürünler (Aa.txt madde 8). İstediğinizi ekleyip çıkarabilirsiniz.
 const PRODUCTS = [
-  { name: "Ahududu",               type: "meyve" },
-  { name: "Böğürtlen",             type: "meyve" },
-  { name: "Vişne",                 type: "meyve" },
-  { name: "Kırmızı Frenk Üzümü",   type: "meyve" },
-  { name: "Mango",                 type: "meyve" },
-  { name: "Kırmızı Dragon Meyvesi",type: "meyve" },
-  { name: "Ananas",                type: "meyve" },
-  { name: "Çilek",                 type: "meyve" },
-  { name: "Şeftali",               type: "meyve" },
-  { name: "Kayısı",                type: "meyve" },
-  { name: "Mısır",                 type: "sebze" },
-  { name: "Bezelye",               type: "sebze" },
-  { name: "Fasulye",               type: "sebze" },
-  { name: "Ispanak",               type: "sebze" },
-  // Sık sebzeler (öneriye yardımcı olsun diye):
-  { name: "Brokoli",               type: "sebze" },
-  { name: "Karnabahar",            type: "sebze" },
-  { name: "Biber",                 type: "sebze" },
-  { name: "Patlıcan",              type: "sebze" },
-  { name: "Bamya",                 type: "sebze" },
+  // Meyveler
+  { name: "Ahududu",        type: "meyve" },
+  { name: "Böğürtlen",      type: "meyve" },
+  { name: "Vişne",          type: "meyve" },
+  { name: "Çilek",          type: "meyve" },
+  { name: "Mango",          type: "meyve" },
+  { name: "Ananas",         type: "meyve" },
+  { name: "Şeftali",        type: "meyve" },
+  { name: "Kayısı",         type: "meyve" },
+  { name: "Yaban mersini",  type: "meyve" },
+  { name: "Ejder meyvesi",  type: "meyve" },
+  { name: "Papaya",         type: "meyve" },
+  // Sebzeler
+  { name: "Brokoli",          type: "sebze" },
+  { name: "Karnabahar",       type: "sebze" },
+  { name: "Tatlı mısır",      type: "sebze" },
+  { name: "Karışık sebzeler", type: "sebze" },
+  { name: "Garnitürler",      type: "sebze" },
+  { name: "Mantar çeşitleri", type: "sebze" },
+  { name: "Bezelye",          type: "sebze" },
+  { name: "Havuç",            type: "sebze" },
+  { name: "Sarımsak",         type: "sebze" },
+  { name: "Fasulye",          type: "sebze" },
+  { name: "Ispanak",          type: "sebze" },
 ];
 
 /* Türkçe karakterleri sadeleştirip küçük harfe çevirir.

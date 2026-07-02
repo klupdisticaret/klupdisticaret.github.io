@@ -13,17 +13,33 @@ const state = {
   budget: "",
   timing: "",
   experience: "",
-  company: "", contact: "", phone: "", whatsapp: "", email: "", location: "", port: "",
+  company: "", contact: "", phone: "", whatsapp: "", location: "", port: "",
 };
+
+/* --- Form hatırlama (Aa.txt madde 10) ---
+   Girilen bilgiler localStorage'da saklanır, tekrar gelince otomatik dolar. */
+const DRAFT_KEY = "klup_form_draft";
+function saveDraft() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    if (d && typeof d === "object") {
+      Object.keys(state).forEach(k => { if (d[k] != null) state[k] = d[k]; });
+    }
+  } catch (e) {}
+}
+loadDraft();
 
 // --- Adım tanımları ---
 const STEPS = [
   { key: "group",      render: renderGroup,      valid: () => !!state.group },
   { key: "products",   render: renderProducts,   valid: () => state.products.length > 0 },
   { key: "tonnage",    render: () => renderChoice("tonnage", "Yaklaşık kaç ton alım yapmayı düşünüyorsunuz?",
-      ["1 ton altı","1–5 ton","5–10 ton","10–20 ton","25 ton ve üzeri"]), valid: () => !!state.tonnage },
+      ["1–5 ton","10–15 ton","20–25 ton","25 ton üzeri"]), valid: () => !!state.tonnage },
   { key: "budget",     render: () => renderChoice("budget", "Bu ithalat için yaklaşık bütçeniz nedir?",
-      ["10.000 $ altı","10.000–25.000 $","25.000–50.000 $","50.000 $ üzeri","Henüz bilmiyorum"]), valid: () => !!state.budget },
+      ["10.000 USD altı","10.000 – 25.000 USD","25.000 – 50.000 USD","50.000 USD üzeri"]), valid: () => !!state.budget },
   { key: "timing",     render: () => renderChoice("timing", "Ne zaman ithalat yapmak istiyorsunuz?",
       ["Hemen","1 ay içinde","1–3 ay içinde","3–6 ay içinde","Sadece araştırıyorum"]), valid: () => !!state.timing },
   { key: "experience", render: () => renderChoice("experience", "Daha önce ithalat yaptınız mı?",
@@ -84,6 +100,7 @@ function renderChoice(key, question, options) {
     b.textContent = opt;
     b.addEventListener("click", () => {
       state[key] = opt;
+      saveDraft();
       grid.querySelectorAll(".choice").forEach(c => c.classList.remove("is-active"));
       b.classList.add("is-active");
       setTimeout(goNext, 180); // seçince otomatik ilerle
@@ -108,6 +125,7 @@ function renderGroup() {
     b.addEventListener("click", () => {
       // grup değişince listede uyumsuz ürünleri temizle değil, sadece kaydet
       state.group = val;
+      saveDraft();
       grid.querySelectorAll(".choice").forEach(c => c.classList.remove("is-active"));
       b.classList.add("is-active");
       setTimeout(goNext, 180);
@@ -124,10 +142,13 @@ function renderProducts() {
   wrap.className = "step";
   wrap.innerHTML = `
     <h2 class="step__q">Hangi ürünleri ithal etmek istiyorsunuz?</h2>
-    <p class="step__hint">Ürünlere tıklayarak seçin (birden fazla seçebilirsiniz).</p>
+    <p class="step__hint">Ürünlere tıklayarak seçin veya aşağıya yazın (birden fazla seçebilirsiniz).</p>
     <div class="choice-grid choice-grid--3" id="prodOptions"></div>
     <div class="add-other">
-      <input id="prodInput" class="text-input" type="text" placeholder="Listede yoksa yazıp ekleyin (özellikle sebzeler)" autocomplete="off" />
+      <div class="autocomplete" style="flex:1">
+        <input id="prodInput" class="text-input" type="text" placeholder="Ürün yazın (örn: ahu... / brok...)" autocomplete="off" />
+        <div id="suggestions" class="suggestions"></div>
+      </div>
       <button type="button" class="btn btn--add" id="addBtn">+ Ekle</button>
     </div>
     <div id="chips" class="chips"></div>
@@ -136,6 +157,7 @@ function renderProducts() {
 
   const optWrap = wrap.querySelector("#prodOptions");
   const input = wrap.querySelector("#prodInput");
+  const sug = wrap.querySelector("#suggestions");
   const addBtn = wrap.querySelector("#addBtn");
   const chips = wrap.querySelector("#chips");
 
@@ -158,7 +180,7 @@ function renderProducts() {
       b.addEventListener("click", () => {
         if (isSelected(name)) state.products = state.products.filter(p => !eq(p, name));
         else state.products.push(name);
-        renderOptions(); renderChips();
+        saveDraft(); renderOptions(); renderChips();
       });
       optWrap.appendChild(b);
     });
@@ -175,21 +197,39 @@ function renderProducts() {
       c.innerHTML = `${esc(p)} <button aria-label="kaldır">✕</button>`;
       c.querySelector("button").addEventListener("click", () => {
         state.products = state.products.filter(x => x !== p);
-        renderOptions(); renderChips();
+        saveDraft(); renderOptions(); renderChips();
       });
       chips.appendChild(c);
     });
     ensureNextButton(wrap, state.products.length > 0);
   };
 
-  const addCustom = () => {
-    const name = input.value.trim();
+  const addCustom = (name) => {
+    name = (name || input.value).trim();
     if (!name) return;
     if (!isSelected(name)) state.products.push(name);
-    input.value = ""; renderOptions(); renderChips(); input.focus();
+    input.value = ""; sug.innerHTML = ""; saveDraft(); renderOptions(); renderChips(); input.focus();
   };
-  addBtn.addEventListener("click", addCustom);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } });
+
+  // Autocomplete önerileri (madde 8)
+  input.addEventListener("input", () => {
+    const list = suggestProducts(input.value, state.group);
+    sug.innerHTML = "";
+    list.forEach(name => {
+      const item = document.createElement("button");
+      item.type = "button"; item.className = "suggestion"; item.textContent = name;
+      item.addEventListener("click", () => addCustom(name));
+      sug.appendChild(item);
+    });
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = sug.querySelector(".suggestion");
+      addCustom(first ? first.textContent : input.value);
+    }
+  });
+  addBtn.addEventListener("click", () => addCustom());
 
   renderOptions();
   renderChips();
@@ -199,38 +239,39 @@ function renderProducts() {
 function renderContact() {
   const wrap = document.createElement("div");
   wrap.className = "step";
+  const cityOpts = CONFIG.CITIES.map(c => `<option value="${esc(c)}">`).join("");
+  const portOpts = CONFIG.PORTS.map(p => `<option value="${esc(p)}">`).join("");
   wrap.innerHTML = `
     <h2 class="step__q">Firma ve iletişim bilgileriniz</h2>
-    <p class="step__hint">Ön teklifinizi oluşturup size iletebilmemiz için.</p>
+    <p class="step__hint">Talebinizi oluşturup size ulaşabilmemiz için.</p>
     <div class="form-grid">
-      <label>Firma adı*<input id="f_company" class="text-input" value="${esc(state.company)}" required></label>
-      <label>Yetkili kişi*<input id="f_contact" class="text-input" value="${esc(state.contact)}" required></label>
-      <label>Telefon*<input id="f_phone" class="text-input" type="tel" value="${esc(state.phone)}" required></label>
-      <label>E-posta*<input id="f_email" class="text-input" type="email" value="${esc(state.email)}" required></label>
-      <label>Ülke / şehir<input id="f_location" class="text-input" value="${esc(state.location)}"></label>
-      <label class="full">Teslimat limanı veya lokasyon<input id="f_port" class="text-input" value="${esc(state.port)}"></label>
+      <label class="bold">Şirket adı*<input id="f_company" class="text-input" value="${esc(state.company)}" required></label>
+      <label class="bold">Yetkili kişi*<input id="f_contact" class="text-input" value="${esc(state.contact)}" required></label>
+      <label class="bold">Telefon*<input id="f_phone" class="text-input" type="tel" value="${esc(state.phone)}" required></label>
+      <label class="bold">WhatsApp<input id="f_whatsapp" class="text-input" type="tel" value="${esc(state.whatsapp)}" placeholder="Varsa WhatsApp numaranız"></label>
+      <label class="bold">Şehir*<input id="f_location" class="text-input" list="cityList" value="${esc(state.location)}" placeholder="Örn: İzmir" required><datalist id="cityList">${cityOpts}</datalist></label>
+      <label class="bold">Liman<input id="f_port" class="text-input" list="portList" value="${esc(state.port)}" placeholder="Opsiyonel"><datalist id="portList">${portOpts}</datalist></label>
     </div>
     <p id="formErr" class="form-err" hidden></p>
   `;
   els.content.appendChild(wrap);
-  ensureNextButton(wrap, true, "Ön Teklifimi Oluştur");
+  ensureNextButton(wrap, true, "Talebimi Gönder");
 
-  // canlı kayıt
+  // canlı kayıt + hatırlama
   const map = { f_company:"company", f_contact:"contact", f_phone:"phone",
-                f_email:"email", f_location:"location", f_port:"port" };
+                f_whatsapp:"whatsapp", f_location:"location", f_port:"port" };
   Object.entries(map).forEach(([id, key]) => {
-    wrap.querySelector("#" + id).addEventListener("input", e => state[key] = e.target.value);
+    wrap.querySelector("#" + id).addEventListener("input", e => { state[key] = e.target.value; saveDraft(); });
   });
 }
 
 function validateContact() {
-  const need = ["company","contact","phone","email"];
-  const ok = need.every(k => (state[k] || "").trim().length > 0)
-             && /\S+@\S+\.\S+/.test(state.email || "");
+  const need = ["company","contact","phone","location"]; // şehir zorunlu, e-posta yok
+  const ok = need.every(k => (state[k] || "").trim().length > 0);
   const err = document.getElementById("formErr");
   if (err) {
     err.hidden = ok;
-    err.textContent = ok ? "" : "Lütfen zorunlu (*) alanları ve geçerli bir e-posta girin.";
+    err.textContent = ok ? "" : "Lütfen zorunlu (*) alanları doldurun (şirket, yetkili, telefon, şehir).";
   }
   return ok;
 }
@@ -259,63 +300,48 @@ function finish() {
 }
 
 function renderProposal(p) {
-  saveLead(p); // admin paneli için kaydet
+  saveLead(p); // CRM'e kaydet (fiyat/PDF/e-posta yok)
 
-  const eligible = isMeetingEligible(p.klass);
   const c = els.content;
   c.innerHTML = "";
+
+  const waBtnHtml = p.showWhatsapp
+    ? `<a class="btn btn--wa" id="waBtn" target="_blank" rel="noopener">📲 Ön teklifimi WhatsApp ile gönder</a>`
+    : "";
 
   const card = document.createElement("div");
   card.className = "proposal";
   card.innerHTML = `
     <div class="proposal__head">
       <div>
-        <h2>Ön Teklifiniz Hazır</h2>
-        <p class="muted">Teklif No: ${p.refNo}</p>
+        <h2>Talebiniz Alındı</h2>
+        <p class="muted">Talep No: ${p.refNo}</p>
       </div>
-      <span class="lead-badge lead-${cssClass(p.klass)}">${p.klass}</span>
+      <span class="lead-badge lead-${cssClass(p.klass)}">${esc(p.label)}</span>
     </div>
 
     <div class="proposal__grid">
       <div><span>Ürün grubu</span><b>${esc(p.group)}</b></div>
       <div><span>Seçilen ürünler</span><b>${p.products.map(esc).join(", ") || "-"}</b></div>
       <div><span>Tahmini tonaj</span><b>${esc(p.tonnage)}</b></div>
-      <div><span>Bütçe aralığı</span><b>${esc(p.budget)}</b></div>
+      <div><span>Bütçe</span><b>${esc(p.budget)}</b></div>
       <div><span>İthalat zamanı</span><b>${esc(p.timing)}</b></div>
-      <div class="price"><span>Ön fiyat aralığı</span><b>${esc(p.priceRange)}</b></div>
+      <div><span>Şehir</span><b>${esc(p.location) || "-"}</b></div>
     </div>
 
-    <ul class="proposal__notes">
-      <li>🚚 ${esc(p.notes.delivery)}</li>
-      <li>🏅 ${esc(p.notes.quality)}</li>
-      <li>❄️ ${esc(p.notes.coldChain)}</li>
-    </ul>
+    <div class="info-box">✅ ${esc(p.message)}</div>
 
-    <p class="disclaimer">⚠️ ${esc(p.disclaimer)}</p>
-
-    <div class="actions">
-      <a class="btn btn--wa" id="waBtn" target="_blank" rel="noopener">📲 WhatsApp'a Gönder</a>
-      <a class="btn btn--mail" id="mailBtn">✉️ E-posta Gönder</a>
-      <button class="btn btn--pdf" id="pdfBtn">📄 PDF İndir</button>
-    </div>
+    ${waBtnHtml ? `<div class="actions actions--single">${waBtnHtml}</div>` : ""}
 
     <div id="meetingArea"></div>
   `;
   c.appendChild(card);
 
-  const refreshLinks = () => {
-    document.getElementById("waBtn").href = whatsappLink(p);
-    document.getElementById("mailBtn").href = mailtoLink(p);
-  };
-  refreshLinks();
-  document.getElementById("pdfBtn").addEventListener("click", () => downloadProposalPDF(p));
-  document.getElementById("mailBtn").addEventListener("click", () => { window.location.href = mailtoLink(p); });
-
-  const area = document.getElementById("meetingArea");
-  if (eligible) {
-    renderMeeting(area, p, refreshLinks);
-  } else {
-    area.innerHTML = `<div class="meeting-note">✅ ${esc(p.notes.nextStep)}</div>`;
+  if (p.showWhatsapp) {
+    const refreshLinks = () => { document.getElementById("waBtn").href = whatsappLink(p); };
+    refreshLinks();
+    const area = document.getElementById("meetingArea");
+    if (p.showMeeting) renderMeeting(area, p, refreshLinks);
   }
 }
 
@@ -352,7 +378,10 @@ function esc(s) {
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 function cssClass(klass) {
-  return { "VIP Lead":"vip","Sıcak Lead":"hot","Takip Edilecek Lead":"follow","Düşük Lead":"low" }[klass] || "low";
+  return {
+    "VIP Lead":"vip", "Sıcak Lead":"hot", "Takip Edilecek Lead":"follow",
+    "Düşük Öncelikli Lead":"low", "Düşük Lead":"low",
+  }[klass] || "low";
 }
 function shake() {
   els.content.classList.remove("shake");

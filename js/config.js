@@ -39,28 +39,24 @@ const CONFIG = {
   ],
   MEETING_DURATION_MIN: 30,
 
-  /* --- Lead puanlama eşikleri ---
-     Toplam puana göre sınıf belirlenir. İstediğiniz gibi ayarlayın. */
-  SCORE_THRESHOLDS: {
-    vip: 80,    // bu puan ve üzeri -> VIP Lead
-    hot: 55,    // bu puan ve üzeri -> Sıcak Lead
-    follow: 30, // bu puan ve üzeri -> Takip Edilecek Lead
-    // altı -> Düşük Lead
-  },
-  // Hangi sınıflara toplantı ekranı açılsın:
-  MEETING_FOR_CLASSES: ["VIP Lead", "Sıcak Lead", "Takip Edilecek Lead"],
+  /* --- Türkiye şehirleri (şehir alanı autocomplete için) --- */
+  CITIES: [
+    "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın",
+    "Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum",
+    "Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun",
+    "Gümüşhane","Hakkâri","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri",
+    "Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin",
+    "Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas",
+    "Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray",
+    "Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük",
+    "Kilis","Osmaniye","Düzce",
+  ],
 
-  /* --- Grup (tonaj) bazlı ÖN FİYAT aralıkları ---
-     NOT: Bunlar PLACEHOLDER (örnek) değerlerdir, gerçek rakamlarınızı yazın.
-     Birim: USD / ton (örnek). Ekranda "ön değerlendirme" uyarısıyla gösterilir.
-     Boş bırakırsanız ("") o kademede fiyat verilmez. */
-  PRICE_TIERS: {
-    "1 ton altı":        { min: "",     max: "",     note: "Bu miktar için öncelik düşüktür; uygun stok durumunda bilgi verilir." },
-    "1–5 ton":           { min: 1800,   max: 2600,   note: "Standart toptan fiyat aralığı." },
-    "5–10 ton":          { min: 1650,   max: 2300,   note: "Artan miktarla daha uygun birim fiyat." },
-    "10–20 ton":         { min: 1500,   max: 2100,   note: "Ciddi alıcı fiyat aralığı." },
-    "25 ton ve üzeri":   { min: 1350,   max: 1950,   note: "Konteyner / özel fiyat. Net teklif için görüşme önerilir." },
-  },
-  PRICE_CURRENCY: "USD",
-  PRICE_UNIT: "ton",
+  /* --- Türkiye limanları (liman alanı — opsiyonel, autocomplete) --- */
+  PORTS: [
+    "İstanbul / Ambarlı Limanı","İstanbul / Haydarpaşa Limanı","İzmir / Alsancak Limanı",
+    "Aliağa Limanı","Mersin Limanı","İskenderun Limanı","Gemlik Limanı","Derince Limanı",
+    "Bandırma Limanı","Samsun Limanı","Trabzon Limanı","Antalya Limanı","Tekirdağ Limanı",
+    "Kocaeli Limanı","Gebze Limanı",
+  ],
 };

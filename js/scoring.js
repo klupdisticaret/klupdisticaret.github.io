@@ -1,77 +1,83 @@
 /* =============================================================
-   LEAD PUANLAMA ve GRUP / FİYAT MANTIĞI
-   Belgedeki kurallar: 25 ton+, 50.000$+, "Hemen", daha önce ithalat
-   yapmış firma -> yüksek puan. Diğer kademeler azalan puan.
+   LEAD GRUPLAMA (A/B/C/D), PUANLAMA ve GÖRÜNÜRLÜK KURALLARI
+   Tonaj bazlı grup + puan. WhatsApp/toplantı görünürlüğü tonaja
+   ve ek kurallara göre belirlenir. (Aa.txt madde 4,5,7,21)
    ============================================================= */
 
-// Her seçeneğe verilen puanlar (toplam ~100 üzerinden tasarlandı).
+// Tonaj -> temel grup
+const TONNAGE_GROUP = {
+  "1–5 ton":      { letter: "A", klass: "Düşük Öncelikli Lead", tonLabel: "1–5 Ton" },
+  "10–15 ton":    { letter: "B", klass: "Takip Edilecek Lead",  tonLabel: "10–15 Ton" },
+  "20–25 ton":    { letter: "C", klass: "Sıcak Lead",           tonLabel: "20–25 Ton" },
+  "25 ton üzeri": { letter: "D", klass: "VIP Lead",             tonLabel: "25 Ton Üstü" },
+};
+
+// Grup bazlı ekran mesajları
+const GROUP_MESSAGES = {
+  A: "Talebiniz alınmıştır. Ekibimiz başvurunuzu değerlendirdikten sonra uygun görülmesi halinde sizinle iletişime geçecektir.",
+  B: "Talebiniz alınmıştır. Ürün, miktar ve bütçe bilgileriniz ekibimiz tarafından incelenecektir. Ön teklif bilgilerinizi WhatsApp üzerinden bize gönderebilirsiniz. Uygun görülmesi halinde ekibimiz sizinle iletişime geçecektir.",
+  C: "Talebiniz uygun görünüyor. Ön teklif bilgilerinizi WhatsApp ile gönderebilirsiniz. Ekibimiz talebinizi kontrol ettikten sonra uygun görülürse görüşme planlama bağlantısı paylaşacaktır.",
+  D: "Talebiniz öncelikli değerlendirme grubuna alınmıştır. Ön teklifinizi gönderebilir ve uygun görüşme saatlerinden birini seçebilirsiniz.",
+};
+
+// Puanlama tabloları (madde 7)
 const SCORE_MAP = {
-  tonnage: {
-    "1 ton altı":      2,
-    "1–5 ton":         8,
-    "5–10 ton":        15,
-    "10–20 ton":       25,
-    "25 ton ve üzeri": 35,
-  },
-  budget: {
-    "10.000 $ altı":     3,
-    "10.000–25.000 $":   12,
-    "25.000–50.000 $":   20,
-    "50.000 $ üzeri":    30,
-    "Henüz bilmiyorum":  4,
-  },
+  tonnage: { "1–5 ton": 10, "10–15 ton": 35, "20–25 ton": 65, "25 ton üzeri": 90 },
   timing: {
-    "Hemen":               20,
-    "1 ay içinde":         15,
-    "1–3 ay içinde":       9,
-    "3–6 ay içinde":       4,
-    "Sadece araştırıyorum":1,
+    "Hemen": 30, "1 ay içinde": 25, "1–3 ay içinde": 15, "3–6 ay içinde": 10, "Sadece araştırıyorum": 0,
   },
   experience: {
-    "Evet, düzenli ithalat yapıyoruz": 15,
-    "Evet, birkaç kez yaptık":          10,
-    "Hayır, ilk kez yapacağız":         5,
-    "Sadece araştırıyoruz":             2,
+    "Evet, düzenli ithalat yapıyoruz": 20, "Evet, birkaç kez yaptık": 10,
+    "Hayır, ilk kez yapacağız": 5, "Sadece araştırıyoruz": 0,
   },
 };
 
-/* state: { tonnage, budget, timing, experience, ... }
-   Dönüş: { score, klass } */
+const has = (v) => !!(v && String(v).trim().length);
+function hasFirma(s)      { return has(s.company); }
+function hasContact(s)    { return has(s.phone) || has(s.whatsapp); } // WhatsApp butonu için
+function hasPhoneAndWa(s) { return has(s.phone) && has(s.whatsapp); }
+
+// Toplam puan
 function scoreLead(state) {
-  let score = 0;
-  score += SCORE_MAP.tonnage[state.tonnage]      || 0;
-  score += SCORE_MAP.budget[state.budget]         || 0;
-  score += SCORE_MAP.timing[state.timing]         || 0;
-  score += SCORE_MAP.experience[state.experience] || 0;
-
-  const t = CONFIG.SCORE_THRESHOLDS;
-  let klass;
-  if (score >= t.vip)         klass = "VIP Lead";
-  else if (score >= t.hot)    klass = "Sıcak Lead";
-  else if (score >= t.follow) klass = "Takip Edilecek Lead";
-  else                        klass = "Düşük Lead";
-
-  return { score, klass };
+  let s = 0;
+  s += SCORE_MAP.tonnage[state.tonnage]      || 0;
+  s += SCORE_MAP.timing[state.timing]         || 0;
+  s += SCORE_MAP.experience[state.experience] || 0;
+  if (hasFirma(state))      s += 15; // firma bilgisi doluysa
+  if (hasPhoneAndWa(state)) s += 15; // telefon ve whatsapp doluysa
+  return s;
 }
 
-// Bu lead sınıfına toplantı ekranı açılmalı mı?
-function isMeetingEligible(klass) {
-  return CONFIG.MEETING_FOR_CLASSES.includes(klass);
-}
+/* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
+   { klass, group, label, score, showWhatsapp, showMeeting, message } */
+function classifyLead(state) {
+  const g = TONNAGE_GROUP[state.tonnage] || TONNAGE_GROUP["1–5 ton"];
+  const score = scoreLead(state);
+  const isResearch = state.timing === "Sadece araştırıyorum";
 
-// Seçilen tonaj kademesine göre ön fiyat aralığı metni üretir.
-function priceRangeText(tonnage) {
-  const tier = CONFIG.PRICE_TIERS[tonnage];
-  if (!tier) return { range: "Görüşmede netleştirilecek", note: "" };
-
-  const { min, max, note } = tier;
-  if (min === "" || max === "") {
-    return { range: "Bu miktar için fiyat görüşmede netleşir", note: note || "" };
+  // Tonaj bazlı temel görünürlük (madde 5 & 21)
+  let showWhatsapp, showMeeting;
+  switch (g.letter) {
+    case "A": showWhatsapp = false; showMeeting = false; break; // sadece kayıt
+    case "B": showWhatsapp = true;  showMeeting = false; break;
+    case "C": showWhatsapp = true;  showMeeting = false; break; // toplantı sadece admin manuel
+    case "D": showWhatsapp = true;  showMeeting = true;  break;
+    default:  showWhatsapp = false; showMeeting = false;
   }
-  const cur = CONFIG.PRICE_CURRENCY;
-  const unit = CONFIG.PRICE_UNIT;
+
+  // Ek kısıtlar
+  if (g.letter === "A")     showWhatsapp = false;   // düşük leadde asla WhatsApp
+  if (!hasContact(state))   showWhatsapp = false;   // telefon/whatsapp yoksa
+  if (isResearch)           showMeeting = false;    // "Sadece araştırıyorum"
+  if (!hasFirma(state))     showMeeting = false;    // firma adı boşsa
+
   return {
-    range: `${Number(min).toLocaleString("tr-TR")} – ${Number(max).toLocaleString("tr-TR")} ${cur} / ${unit} (ön değerlendirme)`,
-    note: note || "",
+    klass: g.klass,
+    group: g.letter,
+    label: g.klass + " / " + g.tonLabel,
+    score,
+    showWhatsapp,
+    showMeeting,
+    message: GROUP_MESSAGES[g.letter] || GROUP_MESSAGES.A,
   };
 }

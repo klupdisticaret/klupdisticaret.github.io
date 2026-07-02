@@ -33,8 +33,12 @@ create table if not exists public.leads (
 );
 
 -- CRM/süreç kolonları (varsa dokunmaz)
-alter table public.leads add column if not exists status text default 'Yeni';
+alter table public.leads add column if not exists status text default 'Yeni lead';
 alter table public.leads add column if not exists notes text;
+alter table public.leads add column if not exists lead_group text;     -- A / B / C / D
+alter table public.leads add column if not exists wa_shown boolean;    -- WhatsApp gösterildi mi
+alter table public.leads add column if not exists meeting_shown boolean; -- Toplantı gösterildi mi
+alter table public.leads add column if not exists next_followup text;   -- Sonraki takip tarihi
 
 -- Güvenlik (Row Level Security) açık
 alter table public.leads enable row level security;

@@ -1,0 +1,488 @@
+Mevcut uygulamayı bozmadan aşağıdaki düzeltmeleri yapmanı istiyorum.
+
+Uygulama linkleri:
+
+Ana uygulama:
+https://adnanparlas.github.io/dondurulmus-meyve
+
+Admin panel:
+https://adnanparlas.github.io/dondurulmus-meyve/admin.html
+
+Lütfen önce mevcut uygulama ve admin panelde bu özelliklerden hangileri zaten var, hangileri eksik kısa şekilde kontrol et. Var olan yapıyı silme, tasarımı bozma. Eksik olanları mevcut yapıya ekle.
+
+1. Tonaj seçenekleri değiştirilecek
+
+Formdaki tonaj seçenekleri şu şekilde olacak:
+
+1–5 ton
+10–15 ton
+20–25 ton
+25 ton üzeri
+
+Eski tonaj seçenekleri kaldırılacak.
+
+2. Bütçe seçenekleri tonajla uyumlu olacak
+
+Tonaj / bütçe mantığı şu şekilde çalışacak:
+
+1–5 ton
+Bütçe: 10.000 USD altı
+
+10–15 ton
+Bütçe: 10.000 – 25.000 USD
+
+20–25 ton
+Bütçe: 25.000 – 50.000 USD
+
+25 ton üzeri
+Bütçe: 50.000 USD üzeri
+
+3. Sonda fiyat gösterilmeyecek
+
+Form sonunda artık ön fiyat aralığı, fiyat kutusu veya fiyat sonucu gösterilmeyecek.
+
+Özellikle 1–5 ton grubunda “ön fiyat aralığı” alanı tamamen kaldırılacak.
+
+1–5 ton sonucunda yeşil kutudaki bilgilendirme mesajı, ön fiyat aralığının olduğu yere gelecek.
+
+Alt taraftaki gereksiz fiyat / teklif kutuları silinecek.
+
+4. Lead gruplama mantığı
+Grup A — Düşük Öncelikli Lead
+
+Şart:
+
+Kullanıcı 1–5 ton seçmişse ve bütçe 10.000 USD altı ise bu kullanıcı Düşük Öncelikli Lead olarak kaydedilsin.
+
+Bu kullanıcıya:
+
+WhatsApp butonu gösterilmesin.
+Toplantı planlama gösterilmesin.
+PDF gösterilmesin.
+E-posta gönder seçeneği gösterilmesin.
+Sadece bilgileri alınsın ve CRM’e kaydedilsin.
+Ekip daha sonra manuel değerlendirsin.
+
+CRM etiketi:
+
+Düşük Öncelikli Lead / 1–5 Ton
+
+Ekran mesajı:
+
+Talebiniz alınmıştır. Ekibimiz başvurunuzu değerlendirdikten sonra uygun görülmesi halinde sizinle iletişime geçecektir.
+
+Grup B — Takip Edilecek Lead
+
+Şart:
+
+Kullanıcı 10–15 ton seçmişse ve bütçe 10.000 – 25.000 USD ise bu kullanıcı Takip Edilecek Lead olarak kaydedilsin.
+
+Bu kullanıcıya:
+
+WhatsApp butonu gösterilsin.
+Toplantı planlama gösterilmesin.
+PDF gösterilmesin.
+E-posta gönder seçeneği gösterilmesin.
+CRM’de Takip Edilecek Lead / 10–15 Ton etiketiyle kaydedilsin.
+Ekip panelinde manuel aranacak / değerlendirilecek listesine düşsün.
+
+CRM etiketi:
+
+Takip Edilecek Lead / 10–15 Ton
+
+Ekran mesajı:
+
+Talebiniz alınmıştır. Ürün, miktar ve bütçe bilgileriniz ekibimiz tarafından incelenecektir. Ön teklif bilgilerinizi WhatsApp üzerinden bize gönderebilirsiniz. Uygun görülmesi halinde ekibimiz sizinle iletişime geçecektir.
+
+Grup C — Sıcak Lead
+
+Şart:
+
+Kullanıcı 20–25 ton seçmişse
+Bütçe 25.000 – 50.000 USD ise
+İthalat zamanı “Hemen”, “1 ay içinde” veya “1–3 ay içinde” ise
+Firma bilgisi girmişse
+
+bu kullanıcı Sıcak Lead olarak kaydedilsin.
+
+Bu kullanıcıya:
+
+WhatsApp’a gönder butonu gösterilsin.
+Toplantı planlama otomatik açılmasın.
+PDF gösterilmesin.
+E-posta gönder seçeneği gösterilmesin.
+Toplantı sadece ekip kontrolünden sonra manuel açılabilsin.
+
+CRM etiketi:
+
+Sıcak Lead / 20–25 Ton
+
+Ekran mesajı:
+
+Talebiniz uygun görünüyor. Ön teklif bilgilerinizi WhatsApp ile gönderebilirsiniz. Ekibimiz talebinizi kontrol ettikten sonra uygun görülürse görüşme planlama bağlantısı paylaşacaktır.
+
+Grup D — VIP Lead
+
+Şart:
+
+Kullanıcı 25 ton üzeri seçmişse
+Bütçe 50.000 USD üzeri ise
+İthalat zamanı “Hemen” veya “1 ay içinde” ise
+Firma adı, telefon ve WhatsApp bilgisi doluysa
+
+bu kullanıcı VIP Lead olarak kaydedilsin.
+
+Bu kullanıcıya:
+
+WhatsApp’a gönder butonu gösterilsin.
+Toplantı planlama seçeneği gösterilsin.
+PDF gösterilmesin.
+E-posta gönder seçeneği gösterilmesin.
+Toplantı saatleri sadece admin panelinde bizim belirlediğimiz müsait saatlerden seçilebilsin.
+
+CRM etiketi:
+
+VIP Lead / 25 Ton Üstü
+
+Ekran mesajı:
+
+Talebiniz öncelikli değerlendirme grubuna alınmıştır. Ön teklifinizi gönderebilir ve uygun görüşme saatlerinden birini seçebilirsiniz.
+
+5. WhatsApp ve toplantı görünürlük kuralları
+
+1–5 ton:
+WhatsApp gizli
+Toplantı gizli
+
+10–15 ton:
+WhatsApp görünür
+Toplantı gizli
+
+20–25 ton:
+WhatsApp görünür
+Toplantı gizli
+Toplantı sadece admin manuel onay verirse açılabilir
+
+25 ton üzeri:
+WhatsApp görünür
+Toplantı görünür
+
+Ek kurallar:
+
+İthalat zamanı “Sadece araştırıyorum” ise toplantı gösterilmesin.
+Firma adı boşsa toplantı gösterilmesin.
+Telefon veya WhatsApp boşsa WhatsApp butonu gösterilmesin.
+Düşük leadlerde WhatsApp butonu hiçbir şekilde görünmesin.
+Diğer leadlerde WhatsApp butonu görünsün.
+
+6. PDF ve e-posta kaldırılacak
+
+PDF butonu tamamen kaldırılacak.
+
+E-posta gönder butonu tamamen kaldırılacak.
+
+Sonuç ekranında sadece uygun lead gruplarında WhatsApp butonu ve yalnızca VIP leadlerde toplantı planlama seçeneği olacak.
+
+7. Tonajlara göre puanlama gösterilecek
+
+Sistem içinde tonajlara göre puanlama mantığı olmalı.
+
+Önerilen puanlama:
+
+1–5 ton: 10 puan
+10–15 ton: 35 puan
+20–25 ton: 65 puan
+25 ton üzeri: 90 puan
+
+Buna ek olarak:
+
+Hemen ithalat: +30 puan
+1 ay içinde: +25 puan
+1–3 ay içinde: +15 puan
+Sadece araştırıyorum: 0 puan
+
+Daha önce düzenli ithalat yaptı: +20 puan
+Birkaç kez ithalat yaptı: +10 puan
+İlk kez yapacak: +5 puan
+Sadece araştırıyor: 0 puan
+
+Firma bilgisi doluysa: +15 puan
+Telefon ve WhatsApp doluysa: +15 puan
+
+Admin panelde lead puanı ve lead grubu görünsün.
+
+8. Meyve ve sebze listeleri güncellenecek
+
+Ürün adı yazılan alanda otomatik öneri / autocomplete çalışsın.
+
+Müşteri meyve veya sebze adını yazmaya başladığında sistem uygun ürünleri önersin.
+
+Meyve listesine şunlar eklensin:
+
+Ahududu
+Böğürtlen
+Vişne
+Çilek
+Mango
+Ananas
+Şeftali
+Kayısı
+Yaban mersini
+Ejder meyvesi
+Papaya
+
+Önemli:
+“Dragon fruit” veya “dragon” yerine Türkçe olarak “Ejder meyvesi” yazılsın.
+
+Sebze listesine şunlar eklensin:
+
+Brokoli
+Karnabahar
+Tatlı mısır
+Karışık sebzeler
+Garnitürler
+Mantar çeşitleri
+Bezelye
+Havuç
+Sarımsak
+Fasulye
+Ispanak
+
+Sebze ve meyve isimleri formda düzgün autocomplete şeklinde çalışsın. Kullanıcı listedeki ürünlerden seçebilsin veya kendi ürününü yazabilsin.
+
+9. Liman / şehir alanı düzenlenecek
+
+Ülke / şehir alanında ülke kaldırılacak.
+
+Sadece şehir alanı olacak.
+
+Şehir alanı zorunlu olacak.
+
+Liman alanı zorunlu olmayacak.
+
+Şehir yazarken yardımcı autocomplete olsun. Örneğin kullanıcı “İz” yazınca “İzmir” önerilebilsin.
+
+Şehir, formun altında ayrıca gereksiz şekilde tekrar görünmesin.
+
+Liman alanına Türkiye’deki tüm önemli limanlar eklensin.
+
+Örnek limanlar:
+
+İstanbul / Ambarlı Limanı
+İstanbul / Haydarpaşa Limanı
+İzmir / Alsancak Limanı
+Aliağa Limanı
+Mersin Limanı
+İskenderun Limanı
+Gemlik Limanı
+Derince Limanı
+Bandırma Limanı
+Samsun Limanı
+Trabzon Limanı
+Antalya Limanı
+Tekirdağ Limanı
+Kocaeli limanları
+Gebze limanları
+
+Liman seçimi opsiyonel olacak.
+
+10. Form bilgileri otomatik hatırlansın
+
+Kullanıcı daha önce tüm formu doldurduysa ve sonra başka bir sayfaya geçtiyse veya tekrar forma geldiyse, daha önce girdiği bilgiler mümkünse otomatik dolu gelsin.
+
+Bu tüm form alanları için geçerli olsun:
+
+Firma adı
+Ad soyad
+Telefon
+WhatsApp
+Şehir
+Liman
+Ürün tipi
+Ürün adı
+Tonaj
+Bütçe
+İthalat zamanı
+Daha önce ithalat yapıp yapmadığı
+
+Teknik olarak mümkünse localStorage veya benzer bir yöntemle daha önce girilen bilgiler saklansın.
+
+Eğer tüm alanları otomatik doldurmak teknik olarak uygun değilse, en azından kullanıcı bir alana tıkladığında daha önce yazdığı değerler altta öneri olarak çıksın.
+
+Örnek:
+
+Kullanıcı “Firma adı” alanına tıkladığında daha önce girdiği firma adı öneri olarak görünsün.
+Telefon alanında daha önceki telefon görünsün.
+WhatsApp alanında daha önceki WhatsApp görünsün.
+Şehir alanında daha önceki şehir görünsün.
+
+Bu davranış tüm form için geçerli olsun.
+
+11. Geri butonu büyütülecek
+
+Formdaki geri butonu / geri yazısı daha görünür hale getirilsin.
+
+Geri butonu mevcut halinden daha büyük olsun.
+
+Mobilde rahat basılabilir olmalı.
+
+Özellikle küçük ekranda parmakla tıklanabilecek büyüklükte olmalı.
+
+12. Adım 7 görsel düzenleme
+
+Adım 7’deki alan başlıkları kalın yazılsın.
+
+Örneğin:
+
+Şirket adı
+Yetkili kişi
+Telefon
+WhatsApp
+Şehir
+Liman
+
+gibi alan başlıkları bold olsun.
+
+13. İlk sayfa açıklama metni değişecek
+
+İlk ekrandaki şu eski cümle:
+
+“Ürün tipinizi, miktarınızı ve bütçenizi girin”
+
+şu cümleyle değiştirilecek:
+
+“Ürün tipinizi, miktarınızı ve bütçenizi girin. Sistem talebinizi uygun gruba ayırsın ve ön teklif sürecini başlatsın.”
+
+14. Footer yazılarının yeri değişecek
+
+Her sayfanın altında görünen:
+
+“2026 Klüp Dış Ticaret - Dondurulmuş Meyve ...”
+
+ve
+
+“Bu site ön teklif aracıdır ...”
+
+yazılarının yeri değiştirilecek.
+
+“Bu site ön teklif aracıdır” yazısı daha önce, firma / copyright yazısı onun altında olacak şekilde düzenlensin.
+
+İlk sayfadaki:
+
+“Yaklaşık 1 dakika sürer • Ücretsiz ön değerlendirme”
+
+yazısı biraz büyütülsün ve daha okunur hale getirilsin.
+
+15. Hemen Teklif Al buton ikonu değişecek
+
+“Hemen Teklif Al” butonunun yanında şu an kağıt / sayfa ikonu var.
+
+Bu ikon kaldırılacak.
+
+Yerine parmakla tıklama / dokunma ikonu kullanılacak.
+
+Buton mobilde daha anlaşılır görünsün.
+
+16. Mobil görünüm düzenlemeleri
+
+Sayfa mobilde biraz yukarı kaydırılsın.
+
+Telefon ekranında daha mobil uygulama gibi görünsün.
+
+Ana sayfada içerik ekranın altına çok taşmasın.
+
+Ana sayfadaki dondurulmuş meyve fotoğrafları biraz büyütülsün.
+
+Tonaj sorusunda “Yaklaşık kaç ton?” soru alanı biraz aşağı alınsın.
+
+Bütçe sorusunda da aynı şekilde soru alanı biraz aşağı alınsın.
+
+17. CRM müşteri kartı
+
+Admin panelde her başvuru için müşteri kartı oluşsun.
+
+Kartta şu bilgiler görünsün:
+
+Ad soyad
+Firma adı
+Telefon
+WhatsApp
+Şehir
+Liman
+Ürün tipi: Meyve / Sebze / Her ikisi
+Girilen ürünler
+Tonaj seçimi
+Bütçe seçimi
+İthalat zamanı
+Daha önce ithalat yaptı mı?
+Lead grubu: A / B / C / D
+Lead etiketi
+Lead puanı
+WhatsApp butonu gösterildi mi?
+Toplantı planlama gösterildi mi?
+Admin notu
+Sonraki takip tarihi
+Lead durumu
+
+18. Lead durumları
+
+Admin panelde lead durumları şu şekilde seçilebilir olsun:
+
+Yeni lead
+İncelenecek
+WhatsApp’a yönlendirildi
+Manuel aranacak
+Toplantı açılabilir
+Toplantı planlandı
+Görüşme yapıldı
+Beklemede
+Siparişe döndü
+Uygun değil
+
+19. Admin panel filtreleri
+
+Admin panelde şu filtreler olsun:
+
+1–5 ton leadleri
+10–15 ton leadleri
+20–25 ton sıcak leadleri
+25 ton üstü VIP leadleri
+WhatsApp’a yönlenenler
+Toplantı planlayanlar
+Manuel aranacaklar
+Bekleyenler
+Siparişe dönenler
+
+20. Admin manuel kontrol
+
+Admin şunları yapabilsin:
+
+Lead durumunu değiştirsin.
+Admin notu eklesin.
+Sonraki takip tarihi belirlesin.
+20–25 ton sıcak lead için manuel olarak toplantı açabilsin.
+10–15 ton lead için toplantı otomatik açılmasın.
+1–5 ton lead için WhatsApp ve toplantı hiçbir şekilde otomatik açılmasın.
+
+21. En önemli iş kuralı
+
+Her gelen lead’e WhatsApp ve toplantı açılmayacak.
+
+1–5 ton:
+Sadece kayıt alınacak. WhatsApp yok, toplantı yok.
+
+10–15 ton:
+WhatsApp var, toplantı yok.
+
+20–25 ton:
+WhatsApp var, toplantı yok. Toplantı sadece admin onayıyla açılabilir.
+
+25 ton üzeri:
+WhatsApp var, toplantı var.
+
+PDF yok.
+E-posta gönder yok.
+Sonda fiyat yok.
+Sadece lead filtreleme, WhatsApp yönlendirme ve uygun lead için toplantı mantığı olacak.
+
+Lütfen bu değişiklikleri mevcut tasarımı bozmadan uygula.

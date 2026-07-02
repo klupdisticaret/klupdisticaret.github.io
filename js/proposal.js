@@ -1,16 +1,12 @@
 /* =============================================================
-   ÖN TEKLİF OLUŞTURMA + WhatsApp / E-posta / Takvim linkleri
-   + lead'in localStorage'a kaydedilmesi (admin paneli için).
+   ÖN TEKLİF OLUŞTURMA + WhatsApp / Takvim linkleri
+   + lead'in localStorage'a ve Supabase'e kaydedilmesi.
+   (Fiyat / PDF / e-posta kaldırıldı — Aa.txt madde 3,6)
    ============================================================= */
 
-const DISCLAIMER =
-  "Bu teklif ön değerlendirme niteliğindedir. Nihai fiyat; ürün kalitesi, sezon, " +
-  "stok, ambalaj, miktar ve teslim şekline göre netleşir.";
-
-/* state -> teklif nesnesi (ekranda ve PDF'te kullanılır) */
+/* state -> teklif/lead nesnesi */
 function buildProposal(state) {
-  const { score, klass } = scoreLead(state);
-  const price = priceRangeText(state.tonnage);
+  const c = classifyLead(state);
 
   return {
     createdAt: new Date().toISOString(),
@@ -25,54 +21,43 @@ function buildProposal(state) {
     contact: state.contact,
     phone: state.phone,
     whatsapp: state.whatsapp,
-    email: state.email,
-    location: state.location,
+    location: state.location,                // şehir
     port: state.port,
-    score,
-    klass,
-    priceRange: price.range,
-    priceNote: price.note,
+    score: c.score,
+    klass: c.klass,                          // Düşük Öncelikli / Takip / Sıcak / VIP
+    leadGroup: c.group,                      // A / B / C / D
+    label: c.label,                          // "VIP Lead / 25 Ton Üstü"
+    showWhatsapp: c.showWhatsapp,
+    showMeeting: c.showMeeting,
+    message: c.message,                      // gruba göre ekran mesajı
     notes: {
       delivery: "Teslimat, anlaşılan limana/lokasyona soğuk zincir korunarak planlanır.",
       quality:  "Tüm ürünler uluslararası kalite standartlarında, kalite kontrolden geçirilir.",
       coldChain:"-18°C depolama ve kesintisiz soğuk zincir lojistiği uygulanır.",
-      nextStep: isMeetingEligible(klass)
-        ? "Uygun bir görüşme saati seçerek ön teklifi netleştirebilirsiniz."
-        : "Talebiniz alındı; ekibimiz değerlendirip en kısa sürede sizinle iletişime geçecektir.",
     },
-    disclaimer: DISCLAIMER,
   };
 }
 
-/* Teklifi okunabilir düz metne çevirir (WhatsApp & e-posta için). */
+/* Teklifi okunabilir düz metne çevirir (WhatsApp için). */
 function proposalToText(p) {
   const L = [];
-  L.push(`*${CONFIG.BRAND.name} — Dondurulmuş Meyve & Sebze İthalatı Ön Teklif*`);
-  L.push(`Teklif No: ${p.refNo}`);
+  L.push(`*${CONFIG.BRAND.name} — Dondurulmuş Meyve & Sebze İthalatı*`);
+  L.push(`Talep No: ${p.refNo}`);
   L.push("");
   L.push(`Ürün grubu: ${p.group}`);
   L.push(`Seçilen ürünler: ${p.products.length ? p.products.join(", ") : "-"}`);
   L.push(`Tahmini tonaj: ${p.tonnage}`);
-  L.push(`Bütçe aralığı: ${p.budget}`);
+  L.push(`Bütçe: ${p.budget}`);
   L.push(`İthalat zamanı: ${p.timing}`);
-  L.push(`Ön fiyat: ${p.priceRange}`);
-  if (p.priceNote) L.push(`Not: ${p.priceNote}`);
-  L.push("");
-  L.push(`Teslimat: ${p.notes.delivery}`);
-  L.push(`Kalite kontrol: ${p.notes.quality}`);
-  L.push(`Soğuk zincir: ${p.notes.coldChain}`);
   L.push("");
   L.push("— Firma bilgileri —");
   L.push(`Firma: ${p.company || "-"}`);
   L.push(`Yetkili: ${p.contact || "-"}`);
   L.push(`Telefon: ${p.phone || "-"}`);
-  L.push(`E-posta: ${p.email || "-"}`);
-  L.push(`Lokasyon: ${p.location || "-"}`);
-  L.push(`Teslim limanı/lokasyon: ${p.port || "-"}`);
-  L.push("");
-  if (p.selectedSlot) L.push(`Seçilen görüşme: ${p.selectedSlot}`);
-  L.push("");
-  L.push(p.disclaimer);
+  if (p.whatsapp) L.push(`WhatsApp: ${p.whatsapp}`);
+  L.push(`Şehir: ${p.location || "-"}`);
+  L.push(`Teslim limanı: ${p.port || "-"}`);
+  if (p.selectedSlot) { L.push(""); L.push(`Seçilen görüşme: ${p.selectedSlot}`); }
   return L.join("\n");
 }
 
@@ -80,13 +65,6 @@ function proposalToText(p) {
 function whatsappLink(p) {
   const msg = proposalToText(p);
   return `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
-}
-
-/* E-posta (mailto) linki. */
-function mailtoLink(p) {
-  const subject = `İthalat ön teklif talebi — ${p.company || p.contact || p.refNo}`;
-  const body = proposalToText(p).replace(/\*/g, ""); // e-postada yıldız istemiyoruz
-  return `mailto:${CONFIG.EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 /* "Google Takvime Ekle" linki — seçilen slota göre etkinlik oluşturur. */

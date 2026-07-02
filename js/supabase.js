@@ -33,15 +33,25 @@ function leadToRow(p) {
     port: p.port,
     score: p.score,
     klass: p.klass,
+    lead_group: p.leadGroup || null,
+    wa_shown: !!p.showWhatsapp,
+    meeting_shown: !!p.showMeeting,
     selected_slot: p.selectedSlot || null,
   };
 }
 
 // Yeni lead ekler (fire-and-forget). Hata olursa site akışını bozmaz.
+// Yeni kolonlar (lead_group vb.) henüz eklenmemişse temel alanlarla tekrar dener.
 async function sbInsertLead(p) {
   if (!sb) return;
+  const row = leadToRow(p);
   try {
-    const { error } = await sb.from("leads").insert(leadToRow(p));
+    let { error } = await sb.from("leads").insert(row);
+    if (error && /column|schema cache|PGRST204/i.test(error.message + (error.code || ""))) {
+      // Yeni kolonları çıkarıp yeniden dene (kurulum güncellenmeden de çalışsın)
+      const { lead_group, wa_shown, meeting_shown, ...base } = row;
+      ({ error } = await sb.from("leads").insert(base));
+    }
     if (error) console.warn("Supabase insert hata:", error.message);
   } catch (e) { console.warn("Supabase insert exception:", e); }
 }
@@ -51,7 +61,7 @@ async function sbUpdateSlot(p) {
   if (!sb) return;
   try {
     const { error } = await sb.from("leads")
-      .update({ selected_slot: p.selectedSlot, status: "Toplantı Planlandı" })
+      .update({ selected_slot: p.selectedSlot, status: "Toplantı planlandı" })
       .eq("ref_no", p.refNo);
     if (error) console.warn("Supabase update hata:", error.message);
   } catch (e) { console.warn("Supabase update exception:", e); }
