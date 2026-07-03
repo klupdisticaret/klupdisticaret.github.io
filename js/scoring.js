@@ -16,7 +16,7 @@ const TONNAGE_GROUP = {
 const GROUP_MESSAGES = {
   A: "Talebiniz alınmıştır. Ekibimiz başvurunuzu değerlendirdikten sonra uygun görülmesi halinde sizinle iletişime geçecektir.",
   B: "Talebiniz alınmıştır. Ürün, miktar ve bütçe bilgileriniz ekibimiz tarafından incelenecektir. Ön teklif bilgilerinizi WhatsApp üzerinden bize gönderebilirsiniz. Uygun görülmesi halinde ekibimiz sizinle iletişime geçecektir.",
-  C: "Talebiniz uygun görünüyor. Ön teklif bilgilerinizi WhatsApp ile gönderebilirsiniz. Ekibimiz talebinizi kontrol ettikten sonra uygun görülürse görüşme planlama bağlantısı paylaşacaktır.",
+  C: "Talebiniz uygun görünüyor. Ön teklif bilgilerinizi WhatsApp ile gönderebilir ve uygun görüşme saatlerinden birini seçebilirsiniz.",
   D: "Talebiniz öncelikli değerlendirme grubuna alınmıştır. Ön teklifinizi gönderebilir ve uygun görüşme saatlerinden birini seçebilirsiniz.",
 };
 
@@ -59,7 +59,7 @@ function classifyLead(state) {
   switch (g.letter) {
     case "A": showWhatsapp = false; showMeeting = false; break; // sadece kayıt
     case "B": showWhatsapp = true;  showMeeting = false; break;
-    case "C": showWhatsapp = true;  showMeeting = false; break; // toplantı sadece admin manuel
+    case "C": showWhatsapp = true;  showMeeting = true;  break; // Sıcak lead artık toplantı seçebilir
     case "D": showWhatsapp = true;  showMeeting = true;  break;
     default:  showWhatsapp = false; showMeeting = false;
   }
