@@ -129,8 +129,12 @@ body {
   gap: 10px;
 }
 .btn--cta:hover { background: var(--orange-dark); }
-/* El, yazının hemen yanında ve büyük/belirgin */
-.cta-ico { font-size: 2rem; line-height: 1; }
+/* El, yazının hemen yanında; çizgileri belirgin görünsün (kontrast + gölge) */
+.cta-ico {
+  font-size: 2rem;
+  line-height: 1;
+  filter: contrast(1.25) saturate(1.1) drop-shadow(0 1px 1px rgba(0,0,0,.4));
+}
 .btn--next {
   background: var(--orange);
   color: #111;
