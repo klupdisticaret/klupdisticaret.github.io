@@ -191,20 +191,19 @@ body {
   max-height: calc(100vh - 20px);
   max-height: calc(100dvh - 20px);
 }
-/* Masaüstü / geniş ekran: düz (koyu) zemin, ortada büyük poster */
+/* Masaüstü / geniş ekran: büyük poster (680px) + siyah zemin (gerekirse dikey kaydırma) */
 @media (min-width: 768px) {
   .home {
-    align-items: center;
-    padding: 24px;
-    background: #0f1d2a;
+    align-items: flex-start;
+    padding: 28px 20px 40px;
+    background: #000;
   }
   .poster {
-    box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 24px 60px rgba(0,0,0,.45);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 24px 60px rgba(0,0,0,.5);
   }
   .poster__img {
-    max-width: min(calc(100vw - 48px), 881px);
-    max-height: calc(100vh - 48px);
-    max-height: calc(100dvh - 48px);
+    max-width: 680px;
+    max-height: none;
   }
 }
 /* yalnızca "Hemen Teklif Al" butonu tıklanabilir (görseldeki konum, yüzde bazlı) */
