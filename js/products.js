@@ -29,22 +29,22 @@ const PRODUCTS = [
   { name: "Sarımsak",         type: "sebze" },
   { name: "Fasulye",          type: "sebze" },
   { name: "Ispanak",          type: "sebze" },
-  // Deniz ürünleri
-  { name: "Somon",            type: "deniz" },
-  { name: "Karides",          type: "deniz" },
-  { name: "Levrek",           type: "deniz" },
-  { name: "Çipura",           type: "deniz" },
-  { name: "Kalamar",          type: "deniz" },
-  { name: "Ahtapot",          type: "deniz" },
-  { name: "Midye",            type: "deniz" },
-  { name: "Beyaz balık",      type: "deniz" },
+  // Deniz ürünleri (balık)
+  { name: "Mezgit Fileto",             type: "deniz" },
+  { name: "Beyaz balık fileto",        type: "deniz" },
+  { name: "Karides",                   type: "deniz" },
+  { name: "Surimi Ürünleri",           type: "deniz" },
+  { name: "Sübye",                     type: "deniz" },
+  { name: "Kalamar",                   type: "deniz" },
+  { name: "Ahtapot",                   type: "deniz" },
+  { name: "Midye",                     type: "deniz" },
+  { name: "Somon",                     type: "deniz" },
   // Bakliyat
-  { name: "Nohut",            type: "bakliyat" },
-  { name: "Kırmızı mercimek", type: "bakliyat" },
-  { name: "Yeşil mercimek",   type: "bakliyat" },
-  { name: "Kuru fasulye",     type: "bakliyat" },
-  { name: "Barbunya",         type: "bakliyat" },
-  { name: "Börülce",          type: "bakliyat" },
+  { name: "Kuru Fasulye",              type: "bakliyat" },
+  { name: "Soya Fasulyesi ve edamame", type: "bakliyat" },
+  { name: "Barbunya fasulyesi",        type: "bakliyat" },
+  { name: "Maş Fasulyesi",             type: "bakliyat" },
+  { name: "Bezelye",                   type: "bakliyat" },
 ];
 
 /* Türkçe karakterleri sadeleştirip küçük harfe çevirir.
@@ -82,5 +82,5 @@ function suggestProducts(query, groupFilter) {
     else if (n.includes(q)) contains.push(p.name);
   }
   // Önce baştan eşleşenler, sonra içinde geçenler. En fazla 6 öneri.
-  return [...starts, ...contains].slice(0, 6);
+  return [...new Set([...starts, ...contains])].slice(0, 6);
 }

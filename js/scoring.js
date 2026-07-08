@@ -47,36 +47,40 @@ function scoreLead(state) {
   return s;
 }
 
+// Tonaj ve bütçe -> seviye (0: düşük | 1: orta | 2: yüksek)
+const TON_LEVEL = { "1–5 ton": 0, "10–15 ton": 1, "20–25 ton": 2, "25 ton üzeri": 2 };
+const BUD_LEVEL = { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 2, "50.000 USD üzeri": 2 };
+
 /* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
-   { klass, group, label, score, showWhatsapp, showMeeting, message } */
+   Görünürlük tonaj VE bütçe seviyelerinin YÜKSEĞİNE göre belirlenir;
+   "ne zaman" ve "daha önce" sorularının TÜM seçenekleri geçerlidir (engellemez).
+   Seviye 0 -> sadece kayıt | 1 -> WhatsApp | 2 -> WhatsApp + toplantı
+   { klass, group, label, score, level, showWhatsapp, showMeeting, message } */
 function classifyLead(state) {
   const g = TONNAGE_GROUP[state.tonnage] || TONNAGE_GROUP["1–5 ton"];
   const score = scoreLead(state);
-  const isResearch = state.timing === "Sadece araştırıyorum";
 
-  // Tonaj bazlı temel görünürlük (madde 5 & 21)
-  let showWhatsapp, showMeeting;
-  switch (g.letter) {
-    case "A": showWhatsapp = false; showMeeting = false; break; // sadece kayıt
-    case "B": showWhatsapp = true;  showMeeting = false; break;
-    case "C": showWhatsapp = true;  showMeeting = true;  break; // Sıcak lead artık toplantı seçebilir
-    case "D": showWhatsapp = true;  showMeeting = true;  break;
-    default:  showWhatsapp = false; showMeeting = false;
-  }
+  const tl = TON_LEVEL[state.tonnage] ?? 0;
+  const bl = BUD_LEVEL[state.budget]  ?? 0;
+  const level = Math.max(tl, bl);
 
-  // Ek kısıtlar
-  if (g.letter === "A")     showWhatsapp = false;   // düşük leadde asla WhatsApp
-  if (!hasContact(state))   showWhatsapp = false;   // telefon/whatsapp yoksa
-  if (isResearch)           showMeeting = false;    // "Sadece araştırıyorum"
-  if (!hasFirma(state))     showMeeting = false;    // firma adı boşsa
+  let showWhatsapp = level >= 1;
+  let showMeeting  = level >= 2;
+
+  // İletişim bilgisi yoksa WhatsApp gönderilemez (form zorunlu tuttuğu için normalde dolu)
+  if (!hasContact(state)) showWhatsapp = false;
+  if (!showWhatsapp)      showMeeting  = false;
+
+  const msgKey = level >= 2 ? "C" : (level === 1 ? "B" : "A");
 
   return {
     klass: g.klass,
     group: g.letter,
     label: g.klass + " / " + g.tonLabel,
     score,
+    level,
     showWhatsapp,
     showMeeting,
-    message: GROUP_MESSAGES[g.letter] || GROUP_MESSAGES.A,
+    message: GROUP_MESSAGES[msgKey],
   };
 }

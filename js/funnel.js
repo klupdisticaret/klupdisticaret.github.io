@@ -167,7 +167,7 @@ function renderProducts() {
   else if (state.group === "sebze") pool = PRODUCTS.filter(p => p.type === "sebze");
   else if (state.group === "deniz") pool = PRODUCTS.filter(p => p.type === "deniz");
   else if (state.group === "bakliyat") pool = PRODUCTS.filter(p => p.type === "bakliyat");
-  const known = pool.map(p => p.name);
+  const known = [...new Set(pool.map(p => p.name))];
 
   const eq = (a, b) => a.toLocaleLowerCase("tr") === b.toLocaleLowerCase("tr");
   const isSelected = (name) => state.products.some(p => eq(p, name));
