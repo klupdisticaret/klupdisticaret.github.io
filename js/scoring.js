@@ -47,12 +47,16 @@ function scoreLead(state) {
   return s;
 }
 
-// Tonaj ve bütçe -> seviye (0: düşük | 1: orta | 2: yüksek)
-const TON_LEVEL = { "1–5 ton": 0, "10–15 ton": 1, "20–25 ton": 2, "25 ton üzeri": 2 };
-const BUD_LEVEL = { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 2, "50.000 USD üzeri": 2 };
+// Görünürlük matrisi: [tonaj][bütçe] -> seviye (0: sadece kayıt | 1: WhatsApp | 2: WhatsApp + toplantı)
+const VISIBILITY = {
+  "1–5 ton":      { "10.000 USD altı": 0, "10.000 – 25.000 USD": 0, "25.000 – 50.000 USD": 0, "50.000 USD üzeri": 0 },
+  "10–15 ton":    { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 1, "50.000 USD üzeri": 1 },
+  "20–25 ton":    { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 2, "50.000 USD üzeri": 2 },
+  "25 ton üzeri": { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 2, "50.000 USD üzeri": 2 },
+};
 
 /* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
-   Görünürlük tonaj VE bütçe seviyelerinin YÜKSEĞİNE göre belirlenir;
+   Görünürlük, tonaj x bütçe matrisine (VISIBILITY) göre hücre-hücre belirlenir;
    "ne zaman" ve "daha önce" sorularının TÜM seçenekleri geçerlidir (engellemez).
    Seviye 0 -> sadece kayıt | 1 -> WhatsApp | 2 -> WhatsApp + toplantı
    { klass, group, label, score, level, showWhatsapp, showMeeting, message } */
@@ -60,9 +64,8 @@ function classifyLead(state) {
   const g = TONNAGE_GROUP[state.tonnage] || TONNAGE_GROUP["1–5 ton"];
   const score = scoreLead(state);
 
-  const tl = TON_LEVEL[state.tonnage] ?? 0;
-  const bl = BUD_LEVEL[state.budget]  ?? 0;
-  const level = Math.max(tl, bl);
+  const row = VISIBILITY[state.tonnage] || {};
+  const level = row[state.budget] ?? 0;
 
   let showWhatsapp = level >= 1;
   let showMeeting  = level >= 2;
