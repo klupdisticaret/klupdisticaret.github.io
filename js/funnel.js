@@ -347,26 +347,59 @@ function renderProposal(p) {
 }
 
 function renderMeeting(area, p, refreshLinks) {
+  const pad = n => String(n).padStart(2, "0");
+  const today = new Date();
+  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  // Saat seçenekleri: 10:00 – 18:00 (yarım saat aralıklı)
+  let timeOpts = "";
+  for (let h = 10; h <= 18; h++) {
+    timeOpts += `<option value="${pad(h)}:00">${pad(h)}:00</option>`;
+    if (h < 18) timeOpts += `<option value="${pad(h)}:30">${pad(h)}:30</option>`;
+  }
+
   area.innerHTML = `
     <div class="meeting">
       <h3>📅 Görüşme planlayın</h3>
-      <p class="muted">Size özel bir görüşme saati seçin. Onay için WhatsApp mesajınıza eklenir.</p>
-      <div class="slots" id="slots"></div>
+      <p class="muted">Size uygun günü ve saati (10:00–18:00) seçin. Onay için WhatsApp mesajınıza eklenir.</p>
+      <div class="form-grid">
+        <label class="bold">Görüşme tarihi
+          <input type="date" id="mDate" class="text-input" min="${minDate}">
+        </label>
+        <label class="bold">Saat (10:00–18:00)
+          <select id="mTime" class="text-input">
+            <option value="" disabled selected>Saat seçin</option>
+            ${timeOpts}
+          </select>
+        </label>
+      </div>
+      <p id="mChosen" style="margin-top:14px;font-weight:700;color:var(--ink)" hidden></p>
     </div>`;
-  const slots = area.querySelector("#slots");
-  CONFIG.MEETING_SLOTS.forEach(slot => {
-    const b = document.createElement("button");
-    b.className = "slot";
-    b.textContent = slot.label;
-    b.addEventListener("click", () => {
-      slots.querySelectorAll(".slot").forEach(s => s.classList.remove("is-active"));
-      b.classList.add("is-active");
-      p.selectedSlot = slot.label;
-      refreshLinks(); // WhatsApp özetine seçilen saat eklensin
-      updateLead(p);  // panele seçilen toplantı saatini yansıt
-    });
-    slots.appendChild(b);
-  });
+
+  const dateEl = area.querySelector("#mDate");
+  const timeEl = area.querySelector("#mTime");
+  const chosen = area.querySelector("#mChosen");
+  const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+                  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+  const update = () => {
+    if (dateEl.value && timeEl.value) {
+      const [y, m, d] = dateEl.value.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      p.selectedSlot = `${d} ${months[m - 1]} ${y} ${days[dt.getDay()]}, ${timeEl.value}`;
+      chosen.textContent = "Seçilen görüşme: " + p.selectedSlot;
+      chosen.hidden = false;
+      refreshLinks(); // WhatsApp özetine seçilen tarih/saat eklensin
+      updateLead(p);  // panele seçilen toplantı bilgisini yansıt
+    } else {
+      p.selectedSlot = "";
+      chosen.hidden = true;
+      refreshLinks();
+    }
+  };
+  dateEl.addEventListener("change", update);
+  timeEl.addEventListener("change", update);
 }
 
 // --- küçük yardımcılar ---
