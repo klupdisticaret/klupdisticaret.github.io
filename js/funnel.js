@@ -348,14 +348,14 @@ function renderProposal(p) {
 
 function renderMeeting(area, p, refreshLinks) {
   const pad = n => String(n).padStart(2, "0");
-  const today = new Date();
-  const minDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const min = new Date();
+  min.setDate(min.getDate() + 1); // en erken yarın seçilebilsin
+  const minDate = `${min.getFullYear()}-${pad(min.getMonth() + 1)}-${pad(min.getDate())}`;
 
-  // Saat seçenekleri: 10:00 – 18:00 (yarım saat aralıklı)
+  // Saat seçenekleri: 10:00 – 18:00 (tam saat başı)
   let timeOpts = "";
   for (let h = 10; h <= 18; h++) {
     timeOpts += `<option value="${pad(h)}:00">${pad(h)}:00</option>`;
-    if (h < 18) timeOpts += `<option value="${pad(h)}:30">${pad(h)}:30</option>`;
   }
 
   area.innerHTML = `
@@ -384,6 +384,18 @@ function renderMeeting(area, p, refreshLinks) {
                   "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
   const update = () => {
+    // Hafta sonu seçilirse uyar ve seçimi iptal et
+    if (dateEl.value) {
+      const [y, m, d] = dateEl.value.split("-").map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      if (dow === 0 || dow === 6) {
+        p.selectedSlot = "";
+        chosen.textContent = "⚠️ Hafta sonu görüşme planlanmıyor. Lütfen hafta içi (Pzt–Cum) bir gün seçin.";
+        chosen.hidden = false;
+        refreshLinks();
+        return;
+      }
+    }
     if (dateEl.value && timeEl.value) {
       const [y, m, d] = dateEl.value.split("-").map(Number);
       const dt = new Date(y, m - 1, d);
