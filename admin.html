@@ -53,6 +53,28 @@
     .st-teslimat  { background:#cdeecd; color:#1c6b1c; }
     .st-kayip     { background:#f1dede; color:#a33; }
 
+    /* Yeni lead durumu renkleri */
+    .ls-yeni    { background:#e3f0ff; color:#1d5fb0; }  /* mavi */
+    .ls-incele  { background:#e9ecf1; color:#59626d; }  /* gri */
+    .ls-wa      { background:#e2f7e9; color:#1f8a4c; }  /* açık yeşil */
+    .ls-cevap   { background:#fff4c2; color:#8a6b00; }  /* sarı */
+    .ls-gorusme { background:#efe6ff; color:#6b3fb0; }  /* mor */
+    .ls-thaz    { background:#ffe6cc; color:#b5641a; }  /* turuncu */
+    .ls-tgon    { background:#ffd2a6; color:#9a4700; }  /* koyu turuncu */
+    .ls-karar   { background:#eaddcb; color:#7a4a1e; }  /* kahverengi */
+    .ls-siparis { background:#d5f0dd; color:#12803d; }  /* yeşil */
+    .ls-kapali  { background:#f4dede; color:#b23636; }  /* kırmızı/gri */
+    .filter-btn .cnt { opacity:.7; font-weight:700; margin-left:5px; }
+    .filter-btn.is-active .cnt { opacity:.95; }
+    .flabel-lbl { font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:2px 0 7px; }
+    .due-late { color:#c0392b; font-weight:700; }
+    .due-today { color:var(--orange-dark); font-weight:700; }
+    .due-none { color:var(--muted); }
+    .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:6px; }
+    .edit-grid .field { display:flex; flex-direction:column; }
+    .edit-grid .field.full { grid-column:1/-1; }
+    @media (max-width:520px){ .edit-grid { grid-template-columns:1fr; } }
+
     tr.clickable { cursor: pointer; }
     tr.clickable:hover td { background: var(--orange-soft); }
     .row-hint { font-size:.78rem; color:var(--muted); margin:2px 0 10px; }
@@ -155,8 +177,11 @@
 
     <div class="panel">
       <h3>Tüm Lead'ler</h3>
+      <p class="flabel-lbl">Lead durumu</p>
       <div class="filters" id="filters"></div>
-      <p class="row-hint">👉 Detay, durum, admin notu ve takip tarihi için bir satıra tıklayın.</p>
+      <p class="flabel-lbl">Aksiyon</p>
+      <div class="filters" id="actionFilters"></div>
+      <p class="row-hint">👉 Detay, durum, aksiyon, not ve takip tarihi için bir satıra tıklayın.</p>
       <div class="table-wrap"><table id="leadTable"></table></div>
     </div>
   </div>
@@ -178,6 +203,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=19"></script>
   <script src="js/supabase.js?v=19"></script>
-  <script src="js/admin.js?v=19"></script>
+  <script src="js/admin.js?v=40"></script>
 </body>
 </html>

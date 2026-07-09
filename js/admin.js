@@ -10,41 +10,41 @@ const gate = document.getElementById("gate");
 const admin = document.getElementById("admin");
 const pwErr = document.getElementById("pwErr");
 let CACHE = [];
-let activeFilter = "all";
+let activeStatus = "Tümü";
+let activeAction = "Tüm aksiyonlar";
 
-// Lead durumları (madde 18)
+// Lead durumları (yeni CRM akışı)
 const STATUSES = [
-  "Yeni lead", "İncelenecek", "WhatsApp'a yönlendirildi", "Manuel aranacak",
-  "Toplantı açılabilir", "Toplantı planlandı", "Görüşme yapıldı", "Beklemede",
-  "Siparişe döndü", "Uygun değil",
+  "Yeni lead", "İncelenecek", "WhatsApp gönderildi", "Cevap bekleniyor", "Görüşme yapıldı",
+  "Teklif hazırlanıyor", "Teklif gönderildi", "Karar bekleniyor", "Siparişe döndü", "Kapatıldı",
 ];
+// Kart alanı seçenekleri
+const CALL_RESULTS  = ["Seçilmedi","Ulaşıldı","Ulaşılamadı","Meşgul / sonra","Geri aranacak","Yanlış numara","İlgilenmiyor"];
+const NEXT_ACTIONS  = ["Seçilmedi","Ara","WhatsApp gönder","Teklif hazırla","Teklif gönder","Toplantı planla","Numune/evrak iste","Takibe al","Kapat"];
+const CLOSE_REASONS = ["Seçilmedi","Fiyat yüksek","Rakip firmayı seçti","Zamanlama uygun değil","İlgilenmiyor","Ulaşılamadı","Bütçe yetersiz","Diğer"];
+
+// funnel'dan gelen eski status alanı için (geriye uyum; leadStatus'tan ayrı)
 function normStatus(s) {
   if (!s || s === "Yeni") return "Yeni lead";
-  if (s === "Toplantı Planlandı") return "Toplantı planlandı"; // eski kayıt uyumu
+  if (s === "Toplantı Planlandı") return "Toplantı planlandı";
   return s;
 }
+// leadStatus -> renk sınıfı
 function statusClass(s) {
   return {
-    "Yeni lead": "st-yeni", "İncelenecek": "st-teklif", "WhatsApp'a yönlendirildi": "st-toplanti",
-    "Manuel aranacak": "st-takip", "Toplantı açılabilir": "st-gorusme", "Toplantı planlandı": "st-sozlesme",
-    "Görüşme yapıldı": "st-siparis", "Beklemede": "st-kalite", "Siparişe döndü": "st-teslimat",
-    "Uygun değil": "st-kayip",
-  }[s] || "st-yeni";
+    "Yeni lead":"ls-yeni", "İncelenecek":"ls-incele", "WhatsApp gönderildi":"ls-wa",
+    "Cevap bekleniyor":"ls-cevap", "Görüşme yapıldı":"ls-gorusme", "Teklif hazırlanıyor":"ls-thaz",
+    "Teklif gönderildi":"ls-tgon", "Karar bekleniyor":"ls-karar", "Siparişe döndü":"ls-siparis",
+    "Kapatıldı":"ls-kapali",
+  }[s] || "ls-incele";
 }
+// Bugün (YYYY-AA-GG)
+function todayStr() { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
-// Filtre tanımları (madde 19)
-const FILTERS = [
-  { key: "all",   label: "Tümü",              test: () => true },
-  { key: "t1",    label: "1–5 ton",           test: l => l.tonnage === "1–5 ton" },
-  { key: "t2",    label: "10–15 ton",         test: l => l.tonnage === "10–15 ton" },
-  { key: "t3",    label: "20–25 ton (Sıcak)", test: l => l.tonnage === "20–25 ton" },
-  { key: "t4",    label: "25+ ton (VIP)",     test: l => l.tonnage === "25 ton üzeri" },
-  { key: "wa",    label: "WhatsApp'a yönlenen", test: l => l.waShown || l.status === "WhatsApp'a yönlendirildi" },
-  { key: "meet",  label: "Toplantı planlayan", test: l => !!l.selectedSlot || l.status === "Toplantı planlandı" },
-  { key: "call",  label: "Manuel aranacak",   test: l => l.status === "Manuel aranacak" },
-  { key: "wait",  label: "Bekleyenler",       test: l => l.status === "Beklemede" },
-  { key: "order", label: "Siparişe dönenler", test: l => l.status === "Siparişe döndü" },
-];
+// Lead durumu filtreleri
+const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Cevap bekleniyor","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
+// Aksiyon filtreleri (takip tarihine göre)
+const ACTION_FILTERS = ["Tüm aksiyonlar","Bugün takip edilecekler","Geciken takipler","Takip tarihi olmayanlar"];
 
 /* --- Giriş / oturum --- */
 async function tryLogin() {
@@ -84,13 +84,21 @@ function rowToLead(r) {
     score: r.score, klass: r.klass, leadGroup: r.lead_group,
     waShown: r.wa_shown, meetingShown: r.meeting_shown,
     selectedSlot: r.selected_slot, status: normStatus(r.status),
-    notes: r.notes || "", nextFollowup: r.next_followup || "",
+    // Yeni CRM alanları (yoksa varsayılan — eski kayıtlar bozulmaz)
+    leadStatus: r.lead_status || "İncelenecek",
+    callResult: r.call_result || "Seçilmedi",
+    nextAction: r.next_action || "Seçilmedi",
+    followUpDate: r.next_followup || "",
+    closeReason: r.close_reason || "",
+    adminNote: r.notes || "",
   };
 }
 function localLeads() {
   try {
     return (JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).map(l =>
       Object.assign({ status: "Yeni lead", notes: "", nextFollowup: "",
+        leadStatus: "İncelenecek", callResult: "Seçilmedi", nextAction: "Seçilmedi",
+        followUpDate: l.nextFollowup || "", closeReason: "", adminNote: l.notes || "",
         leadGroup: l.leadGroup, waShown: l.showWhatsapp, meetingShown: l.showMeeting },
         l, { status: normStatus(l.status) }));
   } catch (e) { return []; }
@@ -120,31 +128,54 @@ async function renderAll() {
   renderProductDist(CACHE);
   renderFieldDist("distTonnage", CACHE, "tonnage");
   renderFieldDist("distBudget", CACHE, "budget");
+  renderFilters();
   renderTable(getFiltered());
 }
 
-function getFiltered() {
-  const f = FILTERS.find(x => x.key === activeFilter) || FILTERS[0];
-  return CACHE.filter(f.test);
+function matchStatusFilter(l) { return activeStatus === "Tümü" || l.leadStatus === activeStatus; }
+function matchActionFilter(l) {
+  const t = todayStr();
+  if (activeAction === "Tüm aksiyonlar") return true;
+  if (activeAction === "Bugün takip edilecekler") return l.followUpDate === t;
+  if (activeAction === "Geciken takipler") return l.followUpDate && l.followUpDate < t;
+  if (activeAction === "Takip tarihi olmayanlar") return !l.followUpDate;
+  return true;
+}
+function getFiltered() { return CACHE.filter(l => matchStatusFilter(l) && matchActionFilter(l)); }
+
+function statusCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => l.leadStatus === name).length; }
+function actionCount(name) {
+  const t = todayStr();
+  if (name === "Tüm aksiyonlar") return CACHE.length;
+  if (name === "Bugün takip edilecekler") return CACHE.filter(l => l.followUpDate === t).length;
+  if (name === "Geciken takipler") return CACHE.filter(l => l.followUpDate && l.followUpDate < t).length;
+  return CACHE.filter(l => !l.followUpDate).length;
 }
 
-/* --- Filtre butonları (madde 19) --- */
+/* --- Filtre butonları (durum + aksiyon) --- */
 function renderFilters() {
-  const bar = document.getElementById("filters");
-  if (!bar) return;
-  bar.innerHTML = "";
-  FILTERS.forEach(f => {
-    const b = document.createElement("button");
-    b.className = "filter-btn" + (f.key === activeFilter ? " is-active" : "");
-    b.textContent = f.label;
-    b.addEventListener("click", () => {
-      activeFilter = f.key;
-      bar.querySelectorAll(".filter-btn").forEach(x => x.classList.remove("is-active"));
-      b.classList.add("is-active");
-      renderTable(getFiltered());
+  const sf = document.getElementById("filters");
+  if (sf) {
+    sf.innerHTML = "";
+    STATUS_FILTERS.forEach(name => {
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (name === activeStatus ? " is-active" : "");
+      b.innerHTML = escapeHtml(name) + ` <span class="cnt">${statusCount(name)}</span>`;
+      b.addEventListener("click", () => { activeStatus = name; renderFilters(); renderTable(getFiltered()); });
+      sf.appendChild(b);
     });
-    bar.appendChild(b);
-  });
+  }
+  const af = document.getElementById("actionFilters");
+  if (af) {
+    af.innerHTML = "";
+    ACTION_FILTERS.forEach(name => {
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (name === activeAction ? " is-active" : "");
+      b.innerHTML = escapeHtml(name) + ` <span class="cnt">${actionCount(name)}</span>`;
+      b.addEventListener("click", () => { activeAction = name; renderFilters(); renderTable(getFiltered()); });
+      af.appendChild(b);
+    });
+  }
 }
 
 /* --- İstatistikler --- */
@@ -152,7 +183,7 @@ function renderStats(leads) {
   const total = leads.length;
   const hotVip = leads.filter(l => l.klass === "Sıcak Lead" || l.klass === "VIP Lead").length;
   const meetings = leads.filter(l => l.selectedSlot).length;
-  const orders = leads.filter(l => l.status === "Siparişe döndü").length;
+  const orders = leads.filter(l => l.leadStatus === "Siparişe döndü").length;
   const stats = [
     ["Toplam Lead", total],
     ["Sıcak + VIP", hotVip],
@@ -175,7 +206,7 @@ function distBars(containerId, pairs) {
     : `<p class="empty">Veri yok.</p>`;
 }
 function renderStatusDist(leads) {
-  const pairs = STATUSES.map(s => [s, leads.filter(l => l.status === s).length]).filter(p => p[1] > 0);
+  const pairs = STATUSES.map(s => [s, leads.filter(l => l.leadStatus === s).length]).filter(p => p[1] > 0);
   distBars("distStatus", pairs);
 }
 function renderClassDist(leads) {
@@ -202,7 +233,7 @@ function renderTable(leads) {
   }
   const head = `<tr>
     <th>Tarih</th><th>Firma</th><th>Grup</th><th>Ürünler</th>
-    <th>Tonaj</th><th>Sınıf</th><th>Durum</th><th>Telefon</th></tr>`;
+    <th>Tonaj</th><th>Sınıf</th><th>Durum</th><th>Sonraki takip</th><th>Telefon</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td>${escapeHtml(l.company)}</td>
@@ -210,7 +241,8 @@ function renderTable(leads) {
     <td>${escapeHtml((l.products || []).join(", "))}</td>
     <td>${escapeHtml(l.tonnage)}</td>
     <td><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(l.klass)}</span></td>
-    <td><span class="status-badge ${statusClass(l.status)}">${escapeHtml(l.status)}</span></td>
+    <td><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
+    <td>${followCell(l.followUpDate)}</td>
     <td>${escapeHtml(l.phone)}</td>
   </tr>`).join("");
   table.innerHTML = head + rows;
@@ -234,8 +266,7 @@ function openCard(lead) {
 
   const kv = (s, v) => `<div><span>${s}</span><b>${escapeHtml(v || "-")}</b></div>`;
   const yn = (v) => v ? "Evet" : "Hayır";
-  const options = STATUSES
-    .map(s => `<option value="${escapeHtml(s)}"${s === lead.status ? " selected" : ""}>${escapeHtml(s)}</option>`).join("");
+  const opt = (list, sel) => list.map(o => `<option${o === sel ? " selected" : ""}>${escapeHtml(o)}</option>`).join("");
 
   document.getElementById("cardBody").innerHTML = `
     <div class="kv">
@@ -259,16 +290,14 @@ function openCard(lead) {
       ${kv("Seçilen görüşme", lead.selectedSlot)}
     </div>
 
-    ${lead.tonnage === "20–25 ton" ? `<div class="manual-note">ℹ️ 20–25 ton (Sıcak) lead — toplantı otomatik açılmaz. Uygunsa durumu <b>"Toplantı açılabilir"</b> yapıp müşteriye WhatsApp'tan görüşme linki gönderebilirsiniz.</div>` : ""}
-
-    <span class="field-label">Lead durumu</span>
-    <select id="stSelect" class="text-input">${options}</select>
-
-    <span class="field-label">Sonraki takip tarihi</span>
-    <input id="stFollow" class="text-input" type="date" value="${escapeHtml(lead.nextFollowup || "")}">
-
-    <span class="field-label">Admin notu</span>
-    <textarea id="stNotes" class="text-input" placeholder="Görüşme notu, hatırlatma, teklif detayı...">${escapeHtml(lead.notes || "")}</textarea>
+    <div class="edit-grid">
+      <div class="field"><label class="field-label">Lead durumu</label><select id="stSelect" class="text-input">${opt(STATUSES, lead.leadStatus)}</select></div>
+      <div class="field"><label class="field-label">Arama sonucu</label><select id="stCall" class="text-input">${opt(CALL_RESULTS, lead.callResult)}</select></div>
+      <div class="field"><label class="field-label">Sonraki aksiyon</label><select id="stNext" class="text-input">${opt(NEXT_ACTIONS, lead.nextAction)}</select></div>
+      <div class="field"><label class="field-label">Sonraki takip tarihi</label><input id="stFollow" class="text-input" type="date" value="${escapeHtml(lead.followUpDate || "")}"></div>
+      <div class="field full"><label class="field-label">Kapatma nedeni <span style="font-weight:400;text-transform:none">(yalnızca “Kapatıldı” durumunda)</span></label><select id="stClose" class="text-input">${opt(CLOSE_REASONS, lead.closeReason)}</select></div>
+      <div class="field full"><label class="field-label">Admin notu</label><textarea id="stNotes" class="text-input" placeholder="Görüşme notu, hatırlatma, teklif detayı...">${escapeHtml(lead.adminNote || "")}</textarea></div>
+    </div>
 
     <div class="card-actions">
       <button class="btn btn--cta" id="stSave" style="flex:1">💾 Kaydet</button>
@@ -287,27 +316,49 @@ function openCard(lead) {
 }
 
 async function saveCard(lead) {
-  const status = document.getElementById("stSelect").value;
-  const notes = document.getElementById("stNotes").value;
-  const nextFollowup = document.getElementById("stFollow").value;
   const msg = document.getElementById("stMsg");
-  lead.status = status; lead.notes = notes; lead.nextFollowup = nextFollowup;
+  lead.leadStatus   = document.getElementById("stSelect").value;
+  lead.callResult   = document.getElementById("stCall").value;
+  lead.nextAction   = document.getElementById("stNext").value;
+  lead.followUpDate = document.getElementById("stFollow").value;
+  lead.closeReason  = document.getElementById("stClose").value;
+  lead.adminNote    = document.getElementById("stNotes").value;
+
+  const refresh = () => { renderStatusDist(CACHE); renderStats(CACHE); renderFilters(); renderTable(getFiltered()); };
 
   if (sb && lead.id != null) {
     msg.textContent = "Kaydediliyor…"; msg.className = "muted";
-    const { error } = await sbAdminUpdate(lead.id, { status, notes, next_followup: nextFollowup || null });
-    if (error) { msg.textContent = "Hata: " + error; msg.className = "form-err"; return; }
+    const full = {
+      lead_status: lead.leadStatus, call_result: lead.callResult, next_action: lead.nextAction,
+      close_reason: lead.closeReason, next_followup: lead.followUpDate || null, notes: lead.adminNote,
+    };
+    let res = await sbAdminUpdate(lead.id, full);
+    if (res.error && /column|schema cache|PGRST204/i.test(res.error)) {
+      // Yeni kolonlar henüz eklenmemiş -> mevcut kolonları kaydet (kalanlar bu oturumda görünür)
+      res = await sbAdminUpdate(lead.id, { next_followup: lead.followUpDate || null, notes: lead.adminNote });
+      if (!res.error) {
+        msg.innerHTML = "✓ Kaydedildi. <b>Not:</b> Durum/aksiyon alanlarının kalıcı olması için Supabase'e yeni kolonları ekleyin (kurulum SQL'i).";
+        msg.className = "save-ok"; refresh(); return;
+      }
+    }
+    if (res.error) { msg.textContent = "Hata: " + res.error; msg.className = "form-err"; return; }
     msg.textContent = "✓ Kaydedildi"; msg.className = "save-ok";
   } else {
     try {
       const arr = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
       const i = arr.findIndex(x => x.refNo === lead.refNo);
-      if (i >= 0) { arr[i].status = status; arr[i].notes = notes; arr[i].nextFollowup = nextFollowup;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+      if (i >= 0) {
+        Object.assign(arr[i], {
+          leadStatus: lead.leadStatus, callResult: lead.callResult, nextAction: lead.nextAction,
+          followUpDate: lead.followUpDate, closeReason: lead.closeReason, adminNote: lead.adminNote,
+          notes: lead.adminNote, nextFollowup: lead.followUpDate,
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+      }
     } catch (e) {}
     msg.textContent = "✓ Kaydedildi (yerel)"; msg.className = "save-ok";
   }
-  renderStatusDist(CACHE); renderStats(CACHE); renderTable(getFiltered());
+  refresh();
 }
 
 /* --- Dışa aktarma --- */
@@ -315,7 +366,7 @@ function exportJSON() { download("leadler.json", JSON.stringify(CACHE, null, 2),
 function exportCSV() {
   const cols = ["createdAt","refNo","company","contact","phone","whatsapp","location","port",
                 "group","products","tonnage","budget","timing","experience","leadGroup","klass","score",
-                "selectedSlot","status","nextFollowup","notes"];
+                "selectedSlot","leadStatus","callResult","nextAction","followUpDate","closeReason","adminNote"];
   const rows = CACHE.map(l => cols.map(c => {
     let v = l[c];
     if (Array.isArray(v)) v = v.join(" | ");
@@ -338,6 +389,13 @@ document.getElementById("refresh").addEventListener("click", renderAll);
 function escapeHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function followCell(s) {
+  if (!s) return '<span class="due-none">—</span>';
+  const t = todayStr(), p = String(s).split("-"), shown = p[2]+"."+p[1]+"."+p[0];
+  if (s === t) return '<span class="due-today">'+shown+' • bugün</span>';
+  if (s < t)  return '<span class="due-late">'+shown+' • gecikti</span>';
+  return shown;
 }
 function cssClass(klass) {
   return {
