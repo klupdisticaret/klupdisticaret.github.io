@@ -348,58 +348,57 @@ function renderProposal(p) {
 
 function renderMeeting(area, p, refreshLinks) {
   const pad = n => String(n).padStart(2, "0");
-  const min = new Date();
-  min.setDate(min.getDate() + 1); // en erken yarın seçilebilsin
-  const minDate = `${min.getFullYear()}-${pad(min.getMonth() + 1)}-${pad(min.getDate())}`;
-
-  // Saat seçenekleri: 10:00 – 18:00 (tam saat başı)
-  let timeOpts = "";
-  for (let h = 10; h <= 18; h++) {
-    timeOpts += `<option value="${pad(h)}:00">${pad(h)}:00</option>`;
-  }
-
-  area.innerHTML = `
-    <div class="meeting">
-      <h3>📅 Görüşme planlayın</h3>
-      <p class="muted">Size uygun günü ve saati (10:00–18:00) seçin. Onay için WhatsApp mesajınıza eklenir.</p>
-      <div class="form-grid">
-        <label class="bold">Görüşme tarihi
-          <input type="date" id="mDate" class="text-input" min="${minDate}">
-        </label>
-        <label class="bold">Saat (10:00–18:00)
-          <select id="mTime" class="text-input">
-            <option value="" disabled selected>Saat seçin</option>
-            ${timeOpts}
-          </select>
-        </label>
-      </div>
-      <p id="mChosen" style="margin-top:14px;font-weight:700;color:var(--ink)" hidden></p>
-    </div>`;
-
-  const dateEl = area.querySelector("#mDate");
-  const timeEl = area.querySelector("#mTime");
-  const chosen = area.querySelector("#mChosen");
   const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
                   "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
+  // en erken yarın seçilebilsin
+  const minD = new Date(); minD.setHours(0, 0, 0, 0); minD.setDate(minD.getDate() + 1);
+
+  // Saat seçenekleri: 10:00 – 18:00 (tam saat başı)
+  let timeOpts = "";
+  for (let h = 10; h <= 18; h++) timeOpts += `<option value="${pad(h)}:00">${pad(h)}:00</option>`;
+
+  area.innerHTML = `
+    <div class="meeting">
+      <h3>📅 Görüşme planlayın</h3>
+      <p class="muted">Takvimden uygun günü, aşağıdan saati (10:00–18:00) seçin. Yalnızca hafta içi günler seçilebilir; onay için WhatsApp mesajınıza eklenir.</p>
+      <div class="cal">
+        <div class="cal__head">
+          <button type="button" class="cal__nav" id="calPrev" aria-label="Önceki ay">‹</button>
+          <span class="cal__title" id="calTitle"></span>
+          <button type="button" class="cal__nav" id="calNext" aria-label="Sonraki ay">›</button>
+        </div>
+        <div class="cal__grid cal__dow">
+          <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span>
+        </div>
+        <div class="cal__grid cal__days" id="calDays"></div>
+      </div>
+      <label class="bold" style="display:block;margin-top:16px">Saat (10:00–18:00)
+        <select id="mTime" class="text-input">
+          <option value="" disabled selected>Saat seçin</option>
+          ${timeOpts}
+        </select>
+      </label>
+      <p id="mChosen" style="margin-top:14px;font-weight:700;color:var(--ink)" hidden></p>
+    </div>`;
+
+  const titleEl = area.querySelector("#calTitle");
+  const daysEl  = area.querySelector("#calDays");
+  const prevBtn = area.querySelector("#calPrev");
+  const nextBtn = area.querySelector("#calNext");
+  const timeEl  = area.querySelector("#mTime");
+  const chosen  = area.querySelector("#mChosen");
+
+  let view = new Date(minD.getFullYear(), minD.getMonth(), 1); // görüntülenen ay
+  let sel = null;                                              // seçilen gün
+
+  const sameDay = (a, b) => a && b &&
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
   const update = () => {
-    // Hafta sonu seçilirse uyar ve seçimi iptal et
-    if (dateEl.value) {
-      const [y, m, d] = dateEl.value.split("-").map(Number);
-      const dow = new Date(y, m - 1, d).getDay();
-      if (dow === 0 || dow === 6) {
-        p.selectedSlot = "";
-        chosen.textContent = "⚠️ Hafta sonu görüşme planlanmıyor. Lütfen hafta içi (Pzt–Cum) bir gün seçin.";
-        chosen.hidden = false;
-        refreshLinks();
-        return;
-      }
-    }
-    if (dateEl.value && timeEl.value) {
-      const [y, m, d] = dateEl.value.split("-").map(Number);
-      const dt = new Date(y, m - 1, d);
-      p.selectedSlot = `${d} ${months[m - 1]} ${y} ${days[dt.getDay()]}, ${timeEl.value}`;
+    if (sel && timeEl.value) {
+      p.selectedSlot = `${sel.getDate()} ${months[sel.getMonth()]} ${sel.getFullYear()} ${days[sel.getDay()]}, ${timeEl.value}`;
       chosen.textContent = "Seçilen görüşme: " + p.selectedSlot;
       chosen.hidden = false;
       refreshLinks(); // WhatsApp özetine seçilen tarih/saat eklensin
@@ -410,8 +409,35 @@ function renderMeeting(area, p, refreshLinks) {
       refreshLinks();
     }
   };
-  dateEl.addEventListener("change", update);
+
+  const renderCal = () => {
+    titleEl.textContent = `${months[view.getMonth()]} ${view.getFullYear()}`;
+    daysEl.innerHTML = "";
+    const lead = (new Date(view.getFullYear(), view.getMonth(), 1).getDay() + 6) % 7; // Pzt=0
+    const total = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (let i = 0; i < lead; i++) daysEl.appendChild(document.createElement("span"));
+    for (let d = 1; d <= total; d++) {
+      const date = new Date(view.getFullYear(), view.getMonth(), d);
+      const dow = date.getDay();
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cal__day";
+      b.textContent = d;
+      if (date < minD || dow === 0 || dow === 6) { b.disabled = true; b.classList.add("is-off"); }
+      if (sameDay(date, sel)) b.classList.add("is-sel");
+      b.addEventListener("click", () => { sel = date; renderCal(); update(); });
+      daysEl.appendChild(b);
+    }
+    const atMin = view.getFullYear() === minD.getFullYear() && view.getMonth() === minD.getMonth();
+    prevBtn.disabled = atMin;
+    prevBtn.classList.toggle("is-off", atMin);
+  };
+
+  prevBtn.addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCal(); });
+  nextBtn.addEventListener("click", () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCal(); });
   timeEl.addEventListener("change", update);
+
+  renderCal();
 }
 
 // --- küçük yardımcılar ---
