@@ -70,6 +70,16 @@
     .due-late { color:#c0392b; font-weight:700; }
     .due-today { color:var(--orange-dark); font-weight:700; }
     .due-none { color:var(--muted); }
+    /* Telefonda: her lead alt alta kart (yatay kaydırma yok) */
+    @media (max-width:640px){
+      #leadTable thead{display:none}
+      #leadTable, #leadTable tbody{display:block;width:100%}
+      #leadTable tr{display:block;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:10px;background:#fff}
+      #leadTable tr.clickable:hover td{background:transparent}
+      #leadTable td{display:flex;justify-content:space-between;align-items:center;gap:14px;border:none;padding:6px 0;white-space:normal;text-align:right}
+      #leadTable td::before{content:attr(data-label);color:var(--muted);font-weight:700;font-size:.74rem;text-align:left;white-space:nowrap}
+      #leadTable td:first-child{border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:2px}
+    }
     .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:6px; }
     .edit-grid .field { display:flex; flex-direction:column; }
     .edit-grid .field.full { grid-column:1/-1; }
@@ -203,6 +213,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=19"></script>
   <script src="js/supabase.js?v=19"></script>
-  <script src="js/admin.js?v=40"></script>
+  <script src="js/admin.js?v=41"></script>
 </body>
 </html>

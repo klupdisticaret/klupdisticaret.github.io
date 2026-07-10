@@ -232,18 +232,16 @@ function renderTable(leads) {
     return;
   }
   const head = `<tr>
-    <th>Tarih</th><th>Firma</th><th>Grup</th><th>Ürünler</th>
-    <th>Tonaj</th><th>Sınıf</th><th>Durum</th><th>Sonraki takip</th><th>Telefon</th></tr>`;
+    <th>Tarih</th><th>Firma</th><th>Tonaj</th><th>Sınıf</th>
+    <th>Durum</th><th>Sonraki takip</th><th>Telefon</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
-    <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
-    <td>${escapeHtml(l.company)}</td>
-    <td>${escapeHtml(l.leadGroup || "-")}</td>
-    <td>${escapeHtml((l.products || []).join(", "))}</td>
-    <td>${escapeHtml(l.tonnage)}</td>
-    <td><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(l.klass)}</span></td>
-    <td><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
-    <td>${followCell(l.followUpDate)}</td>
-    <td>${escapeHtml(l.phone)}</td>
+    <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
+    <td data-label="Firma">${escapeHtml(l.company)}</td>
+    <td data-label="Tonaj">${escapeHtml(l.tonnage)}</td>
+    <td data-label="Sınıf"><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(klassShort(l.klass))}</span></td>
+    <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
+    <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
+    <td data-label="Telefon">${escapeHtml(l.phone)}</td>
   </tr>`).join("");
   table.innerHTML = head + rows;
   table.querySelectorAll("tr.clickable").forEach(tr => {
@@ -402,4 +400,10 @@ function cssClass(klass) {
     "VIP Lead":"vip", "Sıcak Lead":"hot", "Takip Edilecek Lead":"follow",
     "Düşük Öncelikli Lead":"low", "Düşük Lead":"low",
   }[klass] || "low";
+}
+function klassShort(klass) {
+  return {
+    "VIP Lead":"VIP", "Sıcak Lead":"Sıcak", "Takip Edilecek Lead":"Takip",
+    "Düşük Öncelikli Lead":"Düşük", "Düşük Lead":"Düşük",
+  }[klass] || (klass || "-");
 }
