@@ -99,6 +99,31 @@ async function sbBookedSlots() {
   } catch (e) { return []; }
 }
 
+// --- Görüşme müsaitliği (admin ayarlar, funnel okur) ---
+async function sbGetAvailability() {
+  const client = sbAnon || sb;
+  if (!client) return [];
+  try {
+    const { data, error } = await client.from("meeting_availability").select("*");
+    if (error) { console.warn("availability oku hata:", error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+async function sbSetAvailability(row) { // { date, closed, open_times }
+  if (!sb) return { error: "Supabase yok" };
+  try {
+    const { error } = await sb.from("meeting_availability").upsert(row, { onConflict: "date" });
+    return { error: error ? error.message : null };
+  } catch (e) { return { error: String(e) }; }
+}
+async function sbDeleteAvailability(date) {
+  if (!sb) return { error: "Supabase yok" };
+  try {
+    const { error } = await sb.from("meeting_availability").delete().eq("date", date);
+    return { error: error ? error.message : null };
+  } catch (e) { return { error: String(e) }; }
+}
+
 // ADMIN: lead durum/not günceller (giriş yapılmış olmalı). id ile.
 async function sbAdminUpdate(id, fields) {
   if (!sb) return { error: "Supabase yok" };

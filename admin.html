@@ -125,6 +125,25 @@
     textarea.text-input { min-height:70px; resize:vertical; font-family:inherit; }
     select.text-input { appearance:auto; }
     .save-ok { color:var(--ok); font-weight:600; font-size:.85rem; }
+
+    /* Görüşme müsaitliği */
+    .avail-form .text-input{max-width:260px}
+    .av-lbl{display:block;font-size:.76rem;font-weight:700;color:var(--muted);margin:12px 0 6px}
+    .av-chk{display:flex;align-items:center;gap:10px;margin:12px 0;font-weight:600;cursor:pointer}
+    .av-chk input{width:19px;height:19px;accent-color:#c0392b}
+    .av-hours{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:470px}
+    @media(max-width:520px){.av-hours{grid-template-columns:repeat(3,1fr)}}
+    .hbtn{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-weight:700;font-size:.9rem;color:var(--muted);cursor:pointer}
+    .hbtn.on{background:#e2f7e9;border-color:#8fd6a8;color:#1a7a45}
+    .hbtn:disabled{opacity:.4;cursor:not-allowed}
+    .av-effect{margin-top:12px;font-size:.86rem;background:#eef5ff;border:1px solid #cfe0ff;color:#1d4e8a;border-radius:10px;padding:9px 12px}
+    #avSave{margin-top:12px}
+    .ov{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+    .ov .d{font-weight:700}
+    .ov .s{font-size:.84rem;color:var(--muted)}
+    .ov.closed{background:#fbecec;border-color:#f0cccc}
+    .ov.closed .s{color:#b23636;font-weight:700}
+    .ov .rm{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font-size:.8rem;font-weight:700;color:#b23636;cursor:pointer}
   </style>
 </head>
 <body>
@@ -186,6 +205,23 @@
     </div>
 
     <div class="panel">
+      <h3>🕑 Görüşme Saatleri (müsaitlik)</h3>
+      <p class="row-hint">Bir güne özel ayar: tamamen kapatın ya da hangi saatlerin açık olduğunu seçin. Ayarsız günler normal (hafta içi 10:00–18:00). Müşteri yalnızca açık ve dolu olmayan saatleri görür.</p>
+      <div class="avail-form">
+        <label class="av-lbl">Tarih</label>
+        <input type="date" id="avDate" class="text-input">
+        <label class="av-chk"><input type="checkbox" id="avClosed"> Bu gün tamamen kapalı (görüşme yok)</label>
+        <label class="av-lbl" id="avHoursLbl">Açık saatler (tıklayarak aç/kapat)</label>
+        <div class="av-hours" id="avHours"></div>
+        <p class="av-effect" id="avEffect"></p>
+        <button class="btn btn--cta btn--sm" id="avSave">💾 Bu günü kaydet</button>
+        <p id="avMsg" style="margin:8px 0 0"></p>
+      </div>
+      <h4 style="margin:18px 0 8px;font-size:.95rem">Özel ayarlı günler</h4>
+      <div id="avList"></div>
+    </div>
+
+    <div class="panel">
       <h3>Tüm Lead'ler</h3>
       <p class="flabel-lbl">Lead durumu</p>
       <div class="filters" id="filters"></div>
@@ -212,7 +248,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=19"></script>
-  <script src="js/supabase.js?v=21"></script>
-  <script src="js/admin.js?v=41"></script>
+  <script src="js/supabase.js?v=22"></script>
+  <script src="js/admin.js?v=42"></script>
 </body>
 </html>

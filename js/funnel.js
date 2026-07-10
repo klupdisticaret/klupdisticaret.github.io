@@ -359,6 +359,8 @@ function renderMeeting(area, p, refreshLinks) {
   const ALL_TIMES = []; for (let h = 10; h <= 18; h++) ALL_TIMES.push(pad(h) + ":00");
   // Dolu (rezerve) saatler: "YYYY-MM-DD" -> ["14:00", ...] (Supabase'den; yoksa boş = hepsi uygun)
   let booked = {};
+  // Admin müsaitlik ayarları: "YYYY-MM-DD" -> { closed, openTimes }
+  let avail = {};
 
   area.innerHTML = `
     <div class="meeting">
@@ -395,7 +397,13 @@ function renderMeeting(area, p, refreshLinks) {
 
   const sameDay = (a, b) => a && b &&
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  const availFor = key => ALL_TIMES.filter(t => (booked[key] || []).indexOf(t) < 0);
+  const baseTimesFor = key => {
+    const a = avail[key];
+    if (!a) return ALL_TIMES;
+    if (a.closed) return [];
+    return (a.openTimes && a.openTimes.length) ? ALL_TIMES.filter(t => a.openTimes.indexOf(t) >= 0) : ALL_TIMES;
+  };
+  const availFor = key => baseTimesFor(key).filter(t => (booked[key] || []).indexOf(t) < 0);
   const isFull = date => { const dw = date.getDay(); if (dw === 0 || dw === 6) return false; return availFor(ymd(date)).length === 0; };
 
   // Seçilen güne göre saat menüsünü kur (dolu saatler gösterilmez)
@@ -470,14 +478,17 @@ function renderMeeting(area, p, refreshLinks) {
   renderCal();
   renderTimes();
 
-  // Dolu saatleri Supabase'den çek (varsa) ve takvimi/saatleri tazele
-  if (typeof sbBookedSlots === "function") {
-    sbBookedSlots().then(keys => {
-      booked = {};
-      (keys || []).forEach(k => { const s = String(k).split(" "); if (s.length >= 2) (booked[s[0]] = booked[s[0]] || []).push(s[1]); });
-      renderCal(); renderTimes();
-    }).catch(() => {});
-  }
+  // Dolu saatleri + admin müsaitliğini Supabase'den çek (varsa) ve takvimi/saatleri tazele
+  const tasks = [];
+  if (typeof sbBookedSlots === "function") tasks.push(sbBookedSlots().then(keys => {
+    booked = {};
+    (keys || []).forEach(k => { const s = String(k).split(" "); if (s.length >= 2) (booked[s[0]] = booked[s[0]] || []).push(s[1]); });
+  }));
+  if (typeof sbGetAvailability === "function") tasks.push(sbGetAvailability().then(rows => {
+    avail = {};
+    (rows || []).forEach(r => { if (r && r.date) avail[r.date] = { closed: !!r.closed, openTimes: r.open_times || [] }; });
+  }));
+  if (tasks.length) Promise.all(tasks).then(() => { renderCal(); renderTimes(); }).catch(() => {});
 }
 
 // --- küçük yardımcılar ---

@@ -60,7 +60,7 @@ async function logout() {
   if (sb) { try { await sb.auth.signOut(); } catch (e) {} }
   location.reload();
 }
-function showPanel() { gate.hidden = true; admin.hidden = false; renderFilters(); renderAll(); }
+function showPanel() { gate.hidden = true; admin.hidden = false; renderFilters(); renderAll(); initAvail(); }
 
 document.getElementById("loginBtn").addEventListener("click", tryLogin);
 document.getElementById("pw").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
@@ -382,6 +382,115 @@ function download(name, content, type) {
 document.getElementById("exportCsv").addEventListener("click", exportCSV);
 document.getElementById("exportJson").addEventListener("click", exportJSON);
 document.getElementById("refresh").addEventListener("click", renderAll);
+
+/* --- Görüşme müsaitliği yönetimi (admin ayarlar; funnel okur) --- */
+const AV_TIMES = []; for (let _h = 10; _h <= 18; _h++) AV_TIMES.push(String(_h).padStart(2, "0") + ":00");
+let AVAIL = {};        // date -> { closed, openTimes }
+let avOpenSet = {};
+let avInited = false;
+
+function avPad(n) { return String(n).padStart(2, "0"); }
+function avTrDate(s) {
+  const M = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+  const D = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+  const p = String(s).split("-"); const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return (+p[2]) + " " + M[+p[1] - 1] + " " + p[0] + " " + D[d.getDay()];
+}
+async function loadAvail() {
+  if (typeof sbGetAvailability === "function" && sb) {
+    const rows = await sbGetAvailability();
+    AVAIL = {};
+    (rows || []).forEach(r => { if (r && r.date) AVAIL[r.date] = { closed: !!r.closed, openTimes: r.open_times || [] }; });
+  } else {
+    try { AVAIL = JSON.parse(localStorage.getItem("klup_availability")) || {}; } catch (e) { AVAIL = {}; }
+  }
+}
+function saveLocalAvail() { try { localStorage.setItem("klup_availability", JSON.stringify(AVAIL)); } catch (e) {} }
+function avCurrentOpen() { return AV_TIMES.filter(t => avOpenSet[t]); }
+function avRenderEffect() {
+  const e = document.getElementById("avEffect"); if (!e) return;
+  if (document.getElementById("avClosed").checked) { e.textContent = "Müşteri bu gün hiç saat görmez (kapalı)."; return; }
+  const op = avCurrentOpen();
+  if (op.length === AV_TIMES.length) { e.textContent = "Müşteri tüm saatleri görür (dolu olanlar hariç)."; return; }
+  if (!op.length) { e.textContent = "Hiç saat açık değil → müşteri saat göremez."; return; }
+  e.textContent = "Müşteri yalnızca şunları görür: " + op.join(", ") + " (dolu olanlar hariç).";
+}
+function avRenderHours() {
+  const wrap = document.getElementById("avHours"); if (!wrap) return;
+  const closed = document.getElementById("avClosed").checked;
+  wrap.innerHTML = "";
+  AV_TIMES.forEach(t => {
+    const b = document.createElement("button"); b.type = "button";
+    b.className = "hbtn" + (avOpenSet[t] ? " on" : ""); b.textContent = t; b.disabled = closed;
+    b.addEventListener("click", () => { avOpenSet[t] = !avOpenSet[t]; avRenderHours(); });
+    wrap.appendChild(b);
+  });
+  const lbl = document.getElementById("avHoursLbl"); if (lbl) lbl.style.opacity = closed ? ".4" : "1";
+  avRenderEffect();
+}
+function avLoadDateIntoForm() {
+  const d = document.getElementById("avDate").value;
+  const o = AVAIL[d];
+  document.getElementById("avClosed").checked = o ? !!o.closed : false;
+  avOpenSet = {}; AV_TIMES.forEach(t => { avOpenSet[t] = (o && o.openTimes && o.openTimes.length) ? o.openTimes.indexOf(t) >= 0 : true; });
+  avRenderHours();
+}
+function avRenderList() {
+  const list = document.getElementById("avList"); if (!list) return;
+  const keys = Object.keys(AVAIL).sort();
+  if (!keys.length) { list.innerHTML = '<p class="empty">Henüz özel gün ayarı yok.</p>'; return; }
+  list.innerHTML = "";
+  keys.forEach(k => {
+    const o = AVAIL[k]; let summary;
+    if (o.closed) summary = "KAPALI";
+    else if (o.openTimes && o.openTimes.length && o.openTimes.length < AV_TIMES.length) summary = "Sadece: " + o.openTimes.join(", ");
+    else summary = "Tüm saatler açık";
+    const row = document.createElement("div"); row.className = "ov" + (o.closed ? " closed" : "");
+    row.innerHTML = '<div><div class="d">' + escapeHtml(avTrDate(k)) + '</div><div class="s">' + escapeHtml(summary) + '</div></div><button class="rm">Kaldır</button>';
+    row.querySelector(".rm").addEventListener("click", async () => {
+      delete AVAIL[k];
+      if (typeof sbDeleteAvailability === "function" && sb) await sbDeleteAvailability(k); else saveLocalAvail();
+      avRenderList();
+      if (document.getElementById("avDate").value === k) avLoadDateIntoForm();
+    });
+    list.appendChild(row);
+  });
+}
+async function avSaveDay() {
+  const d = document.getElementById("avDate").value; if (!d) return;
+  const msg = document.getElementById("avMsg");
+  const closed = document.getElementById("avClosed").checked;
+  let row, del = false;
+  if (closed) { AVAIL[d] = { closed: true, openTimes: [] }; row = { date: d, closed: true, open_times: [] }; }
+  else {
+    const op = avCurrentOpen();
+    if (op.length === AV_TIMES.length) { delete AVAIL[d]; del = true; }   // tümü açık = varsayılan
+    else { AVAIL[d] = { closed: false, openTimes: op }; row = { date: d, closed: false, open_times: op }; }
+  }
+  if (typeof sbSetAvailability === "function" && sb) {
+    msg.textContent = "Kaydediliyor…"; msg.className = "muted";
+    const res = del ? await sbDeleteAvailability(d) : await sbSetAvailability(row);
+    if (res && res.error) { msg.textContent = "Hata: " + res.error + " (meeting_availability tablosu eklendi mi?)"; msg.className = "form-err"; return; }
+  } else saveLocalAvail();
+  msg.textContent = del ? "✓ Kaydedildi (bu gün varsayılana döndü)" : "✓ Kaydedildi"; msg.className = "save-ok";
+  avRenderList();
+}
+async function initAvail() {
+  const dateEl = document.getElementById("avDate"); if (!dateEl) return;
+  if (!avInited) {
+    avInited = true;
+    const t = new Date(); t.setDate(t.getDate() + 1);
+    const min = t.getFullYear() + "-" + avPad(t.getMonth() + 1) + "-" + avPad(t.getDate());
+    if (!dateEl.value) dateEl.value = min;
+    dateEl.min = min;
+    dateEl.addEventListener("change", avLoadDateIntoForm);
+    document.getElementById("avClosed").addEventListener("change", avRenderHours);
+    document.getElementById("avSave").addEventListener("click", avSaveDay);
+  }
+  await loadAvail();
+  avLoadDateIntoForm();
+  avRenderList();
+}
 
 /* --- yardımcılar --- */
 function escapeHtml(s) {
