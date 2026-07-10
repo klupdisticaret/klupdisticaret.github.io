@@ -113,5 +113,6 @@ function updateLead(p) {
   try { leads = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) {}
   const i = leads.findIndex(l => l.refNo === p.refNo);
   if (i >= 0) { leads[i] = p; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(leads)); } catch (e) {} }
-  if (typeof sbUpdateSlot === "function") sbUpdateSlot(p);
+  if (typeof sbUpdateSlot === "function") return sbUpdateSlot(p);
+  return Promise.resolve({ conflict: false });
 }

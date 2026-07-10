@@ -410,14 +410,26 @@ function renderMeeting(area, p, refreshLinks) {
     }
   };
 
-  const update = () => {
+  const update = async () => {
     if (sel && timeEl.value) {
-      p.selectedSlot = `${sel.getDate()} ${months[sel.getMonth()]} ${sel.getFullYear()} ${days[sel.getDay()]}, ${timeEl.value}`;
-      p.slotKey = `${ymd(sel)} ${timeEl.value}`;
+      const t = timeEl.value, key = ymd(sel);
+      p.selectedSlot = `${sel.getDate()} ${months[sel.getMonth()]} ${sel.getFullYear()} ${days[sel.getDay()]}, ${t}`;
+      p.slotKey = `${key} ${t}`;
+      chosen.style.color = "var(--ink)";
       chosen.textContent = "Seçilen görüşme: " + p.selectedSlot;
       chosen.hidden = false;
       refreshLinks(); // WhatsApp özetine seçilen tarih/saat eklensin
-      updateLead(p);  // panele + rezervasyona yansıt
+      const res = await updateLead(p); // panele + rezervasyona yansıt
+      if (res && res.conflict) {
+        // Bu saat az önce başkası tarafından alındı -> gizle ve uyar
+        (booked[key] = booked[key] || []).push(t);
+        p.selectedSlot = ""; p.slotKey = "";
+        chosen.style.color = "#c0392b";
+        chosen.textContent = "⚠️ Bu saat az önce doldu. Lütfen başka bir saat seçin.";
+        chosen.hidden = false;
+        refreshLinks();
+        renderTimes(); renderCal();
+      }
     } else {
       p.selectedSlot = ""; p.slotKey = "";
       chosen.hidden = true;
