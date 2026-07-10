@@ -355,14 +355,15 @@ function renderMeeting(area, p, refreshLinks) {
   // en erken yarın seçilebilsin
   const minD = new Date(); minD.setHours(0, 0, 0, 0); minD.setDate(minD.getDate() + 1);
 
-  // Saat seçenekleri: 10:00 – 18:00 (tam saat başı)
-  let timeOpts = "";
-  for (let h = 10; h <= 18; h++) timeOpts += `<option value="${pad(h)}:00">${pad(h)}:00</option>`;
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const ALL_TIMES = []; for (let h = 10; h <= 18; h++) ALL_TIMES.push(pad(h) + ":00");
+  // Dolu (rezerve) saatler: "YYYY-MM-DD" -> ["14:00", ...] (Supabase'den; yoksa boş = hepsi uygun)
+  let booked = {};
 
   area.innerHTML = `
     <div class="meeting">
       <h3>📅 Görüşme planlayın</h3>
-      <p class="muted">Takvimden uygun günü, aşağıdan saati (10:00–18:00) seçin. Yalnızca hafta içi günler seçilebilir; onay için WhatsApp mesajınıza eklenir.</p>
+      <p class="muted">Takvimden uygun günü, aşağıdan saati seçin (10:00–18:00). Yalnızca hafta içi ve boş saatler seçilebilir; <b>dolu saatler listede görünmez.</b> Onay için WhatsApp mesajınıza eklenir.</p>
       <div class="cal">
         <div class="cal__head">
           <button type="button" class="cal__nav" id="calPrev" aria-label="Önceki ay">‹</button>
@@ -375,9 +376,8 @@ function renderMeeting(area, p, refreshLinks) {
         <div class="cal__grid cal__days" id="calDays"></div>
       </div>
       <label class="bold" style="display:block;margin-top:16px">Saat (10:00–18:00)
-        <select id="mTime" class="text-input">
-          <option value="" disabled selected>Saat seçin</option>
-          ${timeOpts}
+        <select id="mTime" class="text-input" disabled>
+          <option value="" disabled selected>Önce gün seçin</option>
         </select>
       </label>
       <p id="mChosen" style="margin-top:14px;font-weight:700;color:var(--ink)" hidden></p>
@@ -395,16 +395,31 @@ function renderMeeting(area, p, refreshLinks) {
 
   const sameDay = (a, b) => a && b &&
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const availFor = key => ALL_TIMES.filter(t => (booked[key] || []).indexOf(t) < 0);
+  const isFull = date => { const dw = date.getDay(); if (dw === 0 || dw === 6) return false; return availFor(ymd(date)).length === 0; };
+
+  // Seçilen güne göre saat menüsünü kur (dolu saatler gösterilmez)
+  const renderTimes = () => {
+    if (!sel) { timeEl.innerHTML = `<option value="" disabled selected>Önce gün seçin</option>`; timeEl.disabled = true; return; }
+    const avail = availFor(ymd(sel));
+    if (!avail.length) {
+      timeEl.innerHTML = `<option value="" disabled selected>Bu gün dolu — başka gün seçin</option>`; timeEl.disabled = true;
+    } else {
+      timeEl.disabled = false;
+      timeEl.innerHTML = `<option value="" disabled selected>Saat seçin</option>` + avail.map(t => `<option value="${t}">${t}</option>`).join("");
+    }
+  };
 
   const update = () => {
     if (sel && timeEl.value) {
       p.selectedSlot = `${sel.getDate()} ${months[sel.getMonth()]} ${sel.getFullYear()} ${days[sel.getDay()]}, ${timeEl.value}`;
+      p.slotKey = `${ymd(sel)} ${timeEl.value}`;
       chosen.textContent = "Seçilen görüşme: " + p.selectedSlot;
       chosen.hidden = false;
       refreshLinks(); // WhatsApp özetine seçilen tarih/saat eklensin
-      updateLead(p);  // panele seçilen toplantı bilgisini yansıt
+      updateLead(p);  // panele + rezervasyona yansıt
     } else {
-      p.selectedSlot = "";
+      p.selectedSlot = ""; p.slotKey = "";
       chosen.hidden = true;
       refreshLinks();
     }
@@ -423,9 +438,12 @@ function renderMeeting(area, p, refreshLinks) {
       b.type = "button";
       b.className = "cal__day";
       b.textContent = d;
-      if (date < minD || dow === 0 || dow === 6) { b.disabled = true; b.classList.add("is-off"); }
+      const off = date < minD || dow === 0 || dow === 6;
+      const full = !off && isFull(date);
+      if (off) { b.disabled = true; b.classList.add("is-off"); }
+      else if (full) { b.disabled = true; b.classList.add("is-full"); b.title = "Bu gün dolu"; }
       if (sameDay(date, sel)) b.classList.add("is-sel");
-      b.addEventListener("click", () => { sel = date; renderCal(); update(); });
+      if (!off && !full) b.addEventListener("click", () => { sel = date; renderCal(); renderTimes(); update(); });
       daysEl.appendChild(b);
     }
     const atMin = view.getFullYear() === minD.getFullYear() && view.getMonth() === minD.getMonth();
@@ -438,6 +456,16 @@ function renderMeeting(area, p, refreshLinks) {
   timeEl.addEventListener("change", update);
 
   renderCal();
+  renderTimes();
+
+  // Dolu saatleri Supabase'den çek (varsa) ve takvimi/saatleri tazele
+  if (typeof sbBookedSlots === "function") {
+    sbBookedSlots().then(keys => {
+      booked = {};
+      (keys || []).forEach(k => { const s = String(k).split(" "); if (s.length >= 2) (booked[s[0]] = booked[s[0]] || []).push(s[1]); });
+      renderCal(); renderTimes();
+    }).catch(() => {});
+  }
 }
 
 // --- küçük yardımcılar ---

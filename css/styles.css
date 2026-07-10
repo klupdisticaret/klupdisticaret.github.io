@@ -469,6 +469,8 @@ body {
 .cal__day.is-sel { background: var(--orange); border-color: var(--orange); color: #fff; }
 .cal__day.is-off { opacity: .3; cursor: not-allowed; background: #f4f5f7; border-color: var(--line); }
 .cal__day.is-off:hover { background: #f4f5f7; border-color: var(--line); }
+.cal__day.is-full { background:#f7e4e4; border-color:#eecccc; color:#b23636; opacity:.6; cursor:not-allowed; }
+.cal__day.is-full:hover { background:#f7e4e4; border-color:#eecccc; }
 
 /* ---------------- FOOTER ---------------- */
 .site-footer {

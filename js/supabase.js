@@ -63,16 +63,34 @@ async function sbInsertLead(p) {
   } catch (e) { console.warn("Supabase insert exception:", e); }
 }
 
-// Seçilen toplantı saatini günceller + durumu "Toplantı Planlandı" yapar.
+// Seçilen toplantı saatini günceller + slot_key (rezervasyon) + durum "Toplantı planlandı".
+// slot_key kolonu henüz yoksa onsuz tekrar dener (kurulum güncellenmeden de çalışır).
 async function sbUpdateSlot(p) {
   const client = sbAnon || sb;
   if (!client) return;
   try {
-    const { error } = await client.from("leads")
-      .update({ selected_slot: p.selectedSlot, status: "Toplantı planlandı" })
+    let { error } = await client.from("leads")
+      .update({ selected_slot: p.selectedSlot, slot_key: p.slotKey || null, status: "Toplantı planlandı" })
       .eq("ref_no", p.refNo);
+    if (error && /column|schema cache|PGRST204/i.test(error.message + (error.code || ""))) {
+      ({ error } = await client.from("leads")
+        .update({ selected_slot: p.selectedSlot, status: "Toplantı planlandı" })
+        .eq("ref_no", p.refNo));
+    }
     if (error) console.warn("Supabase update hata:", error.message);
   } catch (e) { console.warn("Supabase update exception:", e); }
+}
+
+// Rezerve (dolu) saat anahtarlarını döndürür: ["2026-07-15 14:00", ...]
+// Güvenli fonksiyon (booked_slots) yoksa boş döner; site yine çalışır.
+async function sbBookedSlots() {
+  const client = sbAnon || sb;
+  if (!client) return [];
+  try {
+    const { data, error } = await client.rpc("booked_slots");
+    if (error) { console.warn("booked_slots hata:", error.message); return []; }
+    return (data || []).map(x => (typeof x === "string" ? x : (x && x.slot_key))).filter(Boolean);
+  } catch (e) { return []; }
 }
 
 // ADMIN: lead durum/not günceller (giriş yapılmış olmalı). id ile.
