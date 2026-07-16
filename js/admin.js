@@ -233,7 +233,7 @@ function renderTable(leads) {
   }
   const head = `<tr>
     <th>Tarih</th><th>Firma</th><th>Tonaj</th><th>Sınıf</th>
-    <th>Durum</th><th>Sonraki takip</th><th>Telefon</th></tr>`;
+    <th>Durum</th><th>Sonraki takip</th><th>Telefon</th><th>Sil</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td data-label="Firma">${escapeHtml(l.company)}</td>
@@ -242,11 +242,52 @@ function renderTable(leads) {
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
     <td data-label="Telefon">${escapeHtml(l.phone)}</td>
+    <td data-label="Sil"><button class="row-del" data-idx="${idx}" title="Bu lead'i sil" aria-label="Sil">🗑️</button></td>
   </tr>`).join("");
   table.innerHTML = head + rows;
   table.querySelectorAll("tr.clickable").forEach(tr => {
     tr.addEventListener("click", () => openCard(leads[+tr.dataset.idx]));
   });
+  table.querySelectorAll(".row-del").forEach(b => {
+    // Satır tıklaması kartı açıyor; silme butonu onu tetiklemesin.
+    b.addEventListener("click", e => { e.stopPropagation(); deleteLead(leads[+b.dataset.idx], b); });
+  });
+}
+
+/* --- Lead silme (satır butonu) --- */
+async function deleteLead(lead, btn) {
+  const ad = lead.company || lead.contact || lead.refNo || "Bu lead";
+  if (!confirm(`"${ad}" silinecek.\n\nBu işlem geri alınamaz. Emin misiniz?`)) return;
+
+  const eski = btn.textContent;
+  btn.disabled = true; btn.textContent = "…";
+
+  if (sb && lead.id) {
+    const res = await sbAdminDelete(lead.id);
+    if (res.error === "rls") {
+      alert(
+        "Silinemedi — 0 satır etkilendi.\n\n" +
+        "Supabase'de leads tablosu için DELETE politikası tanımlı değil, " +
+        "bu yüzden silme isteği sessizce reddediliyor.\n\n" +
+        "Çözüm: Supabase → SQL Editor'de DELETE politikasını ekle " +
+        "(SUPABASE-KURULUM.md içindeki SQL)."
+      );
+      btn.disabled = false; btn.textContent = eski; return;
+    }
+    if (res.error) {
+      alert("Silinemedi: " + res.error);
+      btn.disabled = false; btn.textContent = eski; return;
+    }
+  } else {
+    // Supabase yoksa localStorage yedeğinden sil
+    try {
+      const arr = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || [])
+        .filter(l => l.refNo !== lead.refNo);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    } catch (e) { alert("Silinemedi: " + e); btn.disabled = false; btn.textContent = eski; return; }
+  }
+
+  await renderAll();
 }
 
 /* --- Müşteri Kartı (CRM) --- */

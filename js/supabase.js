@@ -128,3 +128,16 @@ async function sbAdminUpdate(id, fields) {
     return { error: error ? error.message : null };
   } catch (e) { return { error: String(e) }; }
 }
+
+// ADMIN: lead siler (giriş yapılmış olmalı). id ile.
+// .select() ile silinen satırları geri ister: DELETE politikası yoksa Supabase
+// hata DÖNDÜRMEZ, sessizce 0 satır siler. O durumu "rls" olarak ayırt ediyoruz.
+async function sbAdminDelete(id) {
+  if (!sb) return { error: "Supabase yok" };
+  try {
+    const { data, error } = await sb.from("leads").delete().eq("id", id).select("id");
+    if (error) return { error: error.message };
+    if (!data || !data.length) return { error: "rls" };
+    return { error: null };
+  } catch (e) { return { error: String(e) }; }
+}

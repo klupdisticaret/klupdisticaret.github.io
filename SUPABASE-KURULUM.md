@@ -48,6 +48,7 @@ drop policy if exists "site can insert leads" on public.leads;
 drop policy if exists "site can update recent slot" on public.leads;
 drop policy if exists "owner can read leads" on public.leads;
 drop policy if exists "owner can update leads" on public.leads;
+drop policy if exists "owner can delete leads" on public.leads;
 
 -- Site formu YENİ lead ekleyebilir (hem ziyaretçi hem giriş yapmış admin aynı tarayıcıda test edebilsin)
 create policy "site can insert leads"
@@ -65,6 +66,11 @@ create policy "owner can read leads"
 -- Sadece SEN süreç/durum/not güncelleyebilirsin (CRM)
 create policy "owner can update leads"
   on public.leads for update to authenticated using (true) with check (true);
+
+-- Sadece SEN lead SİLebilirsin (admin panelindeki 🗑️ butonu bunu kullanır).
+-- Bu politika olmadan silme isteği HATA VERMEZ; sessizce 0 satır siler.
+create policy "owner can delete leads"
+  on public.leads for delete to authenticated using (true);
 ```
 
 ## 2) Kendine admin kullanıcısı oluştur
