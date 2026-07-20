@@ -6,19 +6,38 @@
   <title>Dondurulmuş Meyve & Sebze İthalatı — Ön Teklif Al</title>
   <meta name="description" content="Dondurulmuş meyve ve sebze ithalatı için hızlı ön teklif. Toptan tedarik, kalite kontrol, soğuk zincir, zamanında teslimat." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍓</text></svg>" />
-  <link rel="stylesheet" href="css/styles.css?v=38" />
+  <link rel="stylesheet" href="css/styles.css?v=39" />
+  <!-- Poster ilk ekranın tamamı: en yüksek öncelikle indir -->
+  <link rel="preload" as="image" href="assets/anasayfa.webp?v=1" type="image/webp" fetchpriority="high" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 </head>
 <body>
 
   <!-- ===================== ANA SAYFA (poster) ===================== -->
   <header class="home" id="hero">
     <div class="poster">
-      <img class="poster__img" src="assets/anasayfa.jpg?v=2"
+      <picture>
+        <source srcset="assets/anasayfa.webp?v=1" type="image/webp" />
+        <img class="poster__img" src="assets/anasayfa.jpg?v=2"
+           width="881" height="1664" fetchpriority="high"
            alt="Klüp Dış Ticaret — Dondurulmuş meyve, sebze, deniz ürünleri ve bakliyat için ön teklif alın. Güvenilir tedarik, kalite kontrol, zamanında teslimat, -18°C soğuk zincir, 27 yıllık tecrübe." />
+      </picture>
       <button class="poster__cta" id="startBtn" type="button"
               aria-label="Hemen Teklif Al — ön teklif sürecini başlat"></button>
     </div>
   </header>
+
+  <!-- Erken tıklama yakalayıcı: funnel.js yüklenmeden basılırsa tıklama kaybolmasın -->
+  <script>
+    (function () {
+      var btn = document.getElementById("startBtn");
+      var pending = false;
+      btn.addEventListener("click", function () { pending = true; });
+      document.addEventListener("DOMContentLoaded", function () {
+        if (pending) btn.click();   // asıl işleyici artık bağlı, tıklamayı tekrarla
+      });
+    })();
+  </script>
 
   <!-- ===================== FUNNEL ===================== -->
   <main class="funnel" id="funnel" hidden>
@@ -40,15 +59,15 @@
   </footer>
 
   <!-- Supabase (merkezi lead kaydı için) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Uygulama dosyaları -->
-  <script src="js/config.js?v=20"></script>
-  <script src="js/supabase.js?v=26"></script>
-  <script src="js/track.js?v=3"></script>
-  <script src="js/products.js?v=27"></script>
-  <script src="js/scoring.js?v=31"></script>
-  <script src="js/proposal.js?v=21"></script>
-  <script src="js/funnel.js?v=43"></script>
+  <!-- Uygulama dosyaları (defer: sıra korunur, sayfa çizimini bloklamaz) -->
+  <script defer src="js/config.js?v=20"></script>
+  <script defer src="js/supabase.js?v=26"></script>
+  <script defer src="js/track.js?v=3"></script>
+  <script defer src="js/products.js?v=27"></script>
+  <script defer src="js/scoring.js?v=31"></script>
+  <script defer src="js/proposal.js?v=21"></script>
+  <script defer src="js/funnel.js?v=43"></script>
 </body>
 </html>
