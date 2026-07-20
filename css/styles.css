@@ -209,8 +209,12 @@ body {
   }
   .poster {
     box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 24px 60px rgba(0,0,0,.5);
-    /* masaüstünde dikey sınır yok; ölçüyü yalnız genişlik belirler */
-    width: min(496px, calc(100vw - 40px));    /* onceki 661px'in ~%75'i */
+    /* Genişlik: tercih 496px (onceki 661px'in ~%75'i), ama pencere alçaksa
+       posteri kısaltıp CTA'nın katlanmanın altında kalmasını önler.
+       68px = .home dikey padding (28 üst + 40 alt). 340px alt sınır: çok alçak
+       pencerelerde poster okunmaz hale gelmesin (orada kaydırma kabul edilir). */
+    width: max(340px, min(496px, calc(100vw - 40px), calc((100vh - 68px) * 881 / 1664)));
+    width: max(340px, min(496px, calc(100vw - 40px), calc((100dvh - 68px) * 881 / 1664)));
   }
   .site-footer {
     color: rgba(255,255,255,.65);
