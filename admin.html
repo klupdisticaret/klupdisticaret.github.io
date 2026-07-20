@@ -36,6 +36,25 @@
     .btn--danger { background: #c0392b; color: #fff; }
     .empty { text-align: center; color: var(--muted); padding: 30px; }
 
+    /* Funnel düşüş raporu */
+    .fn-top { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 6px 0 18px; }
+    .fn-kpi { background: var(--bg, #f6f7f9); border: 1px solid var(--line); border-radius: 11px; padding: 12px; text-align: center; }
+    .fn-kpi b { display: block; font-size: 1.5rem; color: var(--orange-dark); }
+    .fn-kpi span { color: var(--muted); font-size: .76rem; }
+    .fn-row { display: grid; grid-template-columns: 150px 1fr 44px 92px; align-items: center; gap: 10px; margin: 5px 0; font-size: .84rem; }
+    .fn-lbl { color: var(--muted); }
+    .fn-bar { background: var(--line); border-radius: 999px; height: 16px; overflow: hidden; }
+    .fn-bar > i { display: block; height: 100%; background: var(--orange); }
+    .fn-row.is-final .fn-bar > i { background: #1a7a45; }
+    .fn-n { text-align: right; font-weight: 700; }
+    .fn-drop { text-align: right; color: #c0392b; font-size: .78rem; font-weight: 700; }
+    .fn-hint { background: var(--orange-soft, #fff6e5); border: 1px solid #ffd9a0; color: #8a5a1f;
+      border-radius: 10px; padding: 10px 13px; font-size: .83rem; margin: 14px 0 0; }
+    @media (max-width: 620px) {
+      .fn-row { grid-template-columns: 110px 1fr 36px; }
+      .fn-drop { display: none; }
+    }
+
     /* Çoklu seçim çubuğu */
     .bulk-bar {
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -225,6 +244,19 @@
     </div>
 
     <div class="panel">
+      <div class="topbar">
+        <h3 style="margin:0">📉 Ziyaretçi Düşüş Raporu</h3>
+        <select id="funnelRange" class="text-input" style="width:auto;padding:7px 10px;margin:0">
+          <option value="7">Son 7 gün</option>
+          <option value="30" selected>Son 30 gün</option>
+          <option value="90">Son 90 gün</option>
+        </select>
+      </div>
+      <p class="row-hint">Ziyaretçilerin hangi adımda vazgeçtiğini gösterir. Kişisel veri toplanmaz — yalnızca adım sayıları.</p>
+      <div id="funnelReport"></div>
+    </div>
+
+    <div class="panel">
       <h3>🕑 Görüşme Saatleri (müsaitlik)</h3>
       <p class="row-hint">Bir güne özel ayar: tamamen kapatın ya da hangi saatlerin açık olduğunu seçin. Ayarsız günler normal (hafta içi 10:00–18:00). Müşteri yalnızca açık ve dolu olmayan saatleri görür.</p>
       <div class="avail-form">
@@ -273,7 +305,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=20"></script>
-  <script src="js/supabase.js?v=25"></script>
-  <script src="js/admin.js?v=44"></script>
+  <script src="js/supabase.js?v=26"></script>
+  <script src="js/admin.js?v=45"></script>
 </body>
 </html>

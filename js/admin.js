@@ -144,6 +144,7 @@ async function renderAll() {
   renderFieldDist("distBudget", CACHE, "budget");
   renderFilters();
   renderTable(getFiltered());
+  renderFunnel();
 }
 
 function matchStatusFilter(l) { return activeStatus === "Tümü" || l.leadStatus === activeStatus; }
@@ -491,6 +492,9 @@ function download(name, content, type) {
   a.download = name; a.click();
   URL.revokeObjectURL(a.href);
 }
+document.getElementById("funnelRange").addEventListener("change", e => {
+  funnelGun = +e.target.value; renderFunnel();
+});
 document.getElementById("bulkDel").addEventListener("click", bulkDelete);
 document.getElementById("bulkClear").addEventListener("click", () => {
   SELECTED.clear(); renderTable(getFiltered());
@@ -498,6 +502,88 @@ document.getElementById("bulkClear").addEventListener("click", () => {
 document.getElementById("exportCsv").addEventListener("click", exportCSV);
 document.getElementById("exportJson").addEventListener("click", exportJSON);
 document.getElementById("refresh").addEventListener("click", renderAll);
+
+/* --- Funnel düşüş raporu (ziyaretçi hangi adımda vazgeçti?) --- */
+const FUNNEL_ADIMLAR = [
+  { key: "landing",    ad: "Siteye girdi" },
+  { key: "start",      ad: "“Teklif Al”a bastı" },
+  { key: "group",      ad: "1. Ürün grubu" },
+  { key: "products",   ad: "2. Ürün seçimi" },
+  { key: "tonnage",    ad: "3. Tonaj" },
+  { key: "budget",     ad: "4. Bütçe" },
+  { key: "timing",     ad: "5. Zamanlama" },
+  { key: "experience", ad: "6. Tecrübe" },
+  { key: "contact",    ad: "7. İletişim formu" },
+  { key: "finish",     ad: "✅ Talebi gönderdi" },
+];
+
+let funnelGun = 30;
+
+async function renderFunnel() {
+  const box = document.getElementById("funnelReport");
+  if (!box) return;
+  box.innerHTML = '<p class="muted">Yükleniyor…</p>';
+
+  const { rows, error } = await sbFunnelEvents(funnelGun);
+  if (error) {
+    const yok = /does not exist|schema cache|PGRST205/i.test(error);
+    box.innerHTML = yok
+      ? '<p class="muted">📋 Takip tablosu henüz kurulmamış. <b>SUPABASE-KURULUM.md → bölüm 1b</b>’deki SQL’i çalıştırın; sonra ziyaretçiler geldikçe rapor burada dolar.</p>'
+      : '<p class="muted">Rapor okunamadı: ' + escapeHtml(error) + '</p>';
+    return;
+  }
+
+  // Adım -> kaç FARKLI ziyaretçi ulaştı
+  const sayac = {};
+  FUNNEL_ADIMLAR.forEach(a => sayac[a.key] = new Set());
+  rows.forEach(r => { if (sayac[r.step]) sayac[r.step].add(r.session_id); });
+
+  const giren = sayac.landing.size;
+  if (!giren) {
+    box.innerHTML = '<p class="muted">Bu dönemde ziyaretçi kaydı yok. (Takip yeni kurulduysa ilk ziyaretçileri bekleyin.)</p>';
+    return;
+  }
+
+  const bitiren = sayac.finish.size;
+  const oran = giren ? ((bitiren / giren) * 100).toFixed(1) : "0";
+
+  let html =
+    '<div class="fn-top">' +
+      '<div class="fn-kpi"><b>' + giren + '</b><span>siteye giren</span></div>' +
+      '<div class="fn-kpi"><b>' + bitiren + '</b><span>form gönderen</span></div>' +
+      '<div class="fn-kpi"><b>%' + oran + '</b><span>dönüşüm</span></div>' +
+    '</div>';
+
+  let onceki = null;
+  FUNNEL_ADIMLAR.forEach(a => {
+    const n = sayac[a.key].size;
+    const yuzde = giren ? (n / giren) * 100 : 0;
+    // Bir önceki adıma göre kaç kişi kayboldu
+    const kayip = (onceki === null || onceki === 0) ? null : onceki - n;
+    const kayipYuzde = (onceki && kayip > 0) ? ((kayip / onceki) * 100).toFixed(0) : null;
+    html +=
+      '<div class="fn-row' + (a.key === "finish" ? " is-final" : "") + '">' +
+        '<div class="fn-lbl">' + escapeHtml(a.ad) + '</div>' +
+        '<div class="fn-bar"><i style="width:' + yuzde.toFixed(1) + '%"></i></div>' +
+        '<div class="fn-n">' + n + '</div>' +
+        '<div class="fn-drop">' + (kayipYuzde && kayip > 0 ? '−' + kayip + ' (%' + kayipYuzde + ')' : '') + '</div>' +
+      '</div>';
+    onceki = n;
+  });
+
+  // En büyük düşüşün olduğu adımı bul ve vurgula
+  let enBuyuk = { ad: null, kayip: 0 };
+  for (let i = 1; i < FUNNEL_ADIMLAR.length; i++) {
+    const onc = sayac[FUNNEL_ADIMLAR[i - 1].key].size;
+    const simdi = sayac[FUNNEL_ADIMLAR[i].key].size;
+    if (onc - simdi > enBuyuk.kayip) enBuyuk = { ad: FUNNEL_ADIMLAR[i].ad, kayip: onc - simdi, onceki: FUNNEL_ADIMLAR[i - 1].ad };
+  }
+  if (enBuyuk.ad && enBuyuk.kayip > 0) {
+    html += '<p class="fn-hint">🔎 En büyük kayıp: <b>' + escapeHtml(enBuyuk.onceki) +
+            '</b> → <b>' + escapeHtml(enBuyuk.ad) + '</b> arasında <b>' + enBuyuk.kayip + ' kişi</b> vazgeçti.</p>';
+  }
+  box.innerHTML = html;
+}
 
 /* --- Görüşme müsaitliği yönetimi (admin ayarlar; funnel okur) --- */
 const AV_TIMES = []; for (let _h = 10; _h <= 18; _h++) AV_TIMES.push(String(_h).padStart(2, "0") + ":00");

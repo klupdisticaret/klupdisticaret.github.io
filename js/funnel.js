@@ -58,10 +58,14 @@ const els = {
   back: document.getElementById("backBtn"),
 };
 
+// Siteye giren herkes (funnel'a hiç başlamayanlar da) sayılsın
+if (typeof trackStep === "function") trackStep("landing", -1);
+
 document.getElementById("startBtn").addEventListener("click", () => {
   els.hero.hidden = true;
   els.funnel.hidden = false;
   current = 0;
+  if (typeof trackStep === "function") trackStep("start", 0);
   showStep();
   els.funnel.scrollIntoView({ behavior: "smooth" });
 });
@@ -72,6 +76,7 @@ els.back.addEventListener("click", () => {
 
 function showStep() {
   const step = STEPS[current];
+  if (typeof trackStep === "function") trackStep(step.key, current + 1);
   els.content.innerHTML = "";
   step.render();
   els.counter.textContent = `Adım ${current + 1} / ${STEPS.length}`;
@@ -292,6 +297,7 @@ function ensureNextButton(wrap, enabled, label = "Devam →") {
 
 // --- Final: ön teklif oluştur ---
 function finish() {
+  if (typeof trackStep === "function") trackStep("finish", STEPS.length + 1);
   els.progress.style.width = "100%";
   els.counter.textContent = "Talebiniz alındı";
   els.back.hidden = true;

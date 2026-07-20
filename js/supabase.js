@@ -120,6 +120,22 @@ async function sbDeleteAvailability(date) {
   } catch (e) { return { error: String(e) }; }
 }
 
+// ADMIN: funnel adım olaylarını okur (giriş yapılmış olmalı).
+// gun: kaç günlük geçmiş (varsayılan 30). Tablo yoksa boş döner, panel bozulmaz.
+async function sbFunnelEvents(gun = 30) {
+  if (!sb) return { rows: [], error: "Supabase yok" };
+  try {
+    const since = new Date(Date.now() - gun * 86400000).toISOString();
+    const { data, error } = await sb
+      .from("funnel_events")
+      .select("session_id,step,step_index,created_at")
+      .gte("created_at", since)
+      .limit(50000);
+    if (error) return { rows: [], error: error.message };
+    return { rows: data || [], error: null };
+  } catch (e) { return { rows: [], error: String(e) }; }
+}
+
 // ADMIN: lead durum/not günceller (giriş yapılmış olmalı). id ile.
 async function sbAdminUpdate(id, fields) {
   if (!sb) return { error: "Supabase yok" };

@@ -73,6 +73,43 @@ create policy "owner can delete leads"
   on public.leads for delete to authenticated using (true);
 ```
 
+## 1b) Funnel adım takibi (ziyaretçi nerede vazgeçiyor?)
+Bu tablo, formu **bitirmeyen** ziyaretçilerin hangi adımda düştüğünü gösterir.
+Kişisel veri tutmaz: sadece rastgele bir oturum kimliği + adım adı + zaman.
+IP, çerez, isim, telefon **kaydedilmez**.
+
+SQL Editor'de çalıştır:
+
+```sql
+create table if not exists public.funnel_events (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  session_id text not null,
+  step text not null,
+  step_index int
+);
+
+-- Aynı ziyaretçi aynı adımı bir kez saysın (sayfa yenilense de şişmesin)
+create unique index if not exists funnel_events_uniq
+  on public.funnel_events (session_id, step);
+
+create index if not exists funnel_events_created
+  on public.funnel_events (created_at desc);
+
+alter table public.funnel_events enable row level security;
+
+drop policy if exists "site can log funnel" on public.funnel_events;
+drop policy if exists "owner can read funnel" on public.funnel_events;
+
+-- Ziyaretçi kendi adımını yazabilir (okuyamaz)
+create policy "site can log funnel"
+  on public.funnel_events for insert to anon, authenticated with check (true);
+
+-- Sadece SEN raporu okuyabilirsin
+create policy "owner can read funnel"
+  on public.funnel_events for select to authenticated using (true);
+```
+
 ## 2) Kendine admin kullanıcısı oluştur
 Sol menü → **Authentication** → **Users** → **Add user** → **Create new user**:
 - **Email:** panele girişte kullanacağın e-posta
