@@ -6,7 +6,7 @@
   <title>Dondurulmuş Meyve & Sebze İthalatı — Ön Teklif Al</title>
   <meta name="description" content="Dondurulmuş meyve ve sebze ithalatı için hızlı ön teklif. Toptan tedarik, kalite kontrol, soğuk zincir, zamanında teslimat." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍓</text></svg>" />
-  <link rel="stylesheet" href="css/styles.css?v=41" />
+  <link rel="stylesheet" href="css/styles.css?v=42" />
   <!-- Görsel artık ilk ekranın tamamı değil, yalnızca ürün kartlarının fotoğrafı.
        Başlık metni hemen çizildiği için en yüksek öncelik gerekmiyor. -->
   <link rel="preload" as="image" href="assets/anasayfa.webp?v=1" type="image/webp" />
@@ -40,6 +40,9 @@
         Ürün çeşidinizi, miktarınızı ve bütçenizi girin. Sistem talebinizi uygun gruba
         ayırsın ve ön teklif sürecini başlatsın.
       </p>
+
+      <h2 class="lp-hero__kicker">Teklifiniz 2 dakikada hazır</h2>
+      <p class="lp-hero__note">Birkaç soru — ürün, miktar, bütçe. Gerisini biz hallediyoruz.</p>
 
       <button class="lp-cta" id="startBtn" type="button">
         <span class="lp-cta__chev" aria-hidden="true">»</span>
@@ -113,27 +116,14 @@
       </li>
     </ul>
 
-    <div class="lp-end">
-      <h2>Teklifiniz 2 dakikada hazır</h2>
-      <p class="muted">Birkaç soru — ürün, miktar, bütçe. Gerisini biz hallediyoruz.</p>
-      <button class="lp-cta" type="button" data-cta>
-        <span class="lp-cta__chev" aria-hidden="true">»</span>
-        Hemen Teklif Al
-      </button>
-    </div>
-
   </header>
 
-  <!-- Erken tıklama yakalayıcı + alttaki butonu ana butona bağla -->
+  <!-- Erken tıklama yakalayıcı: funnel.js yüklenmeden basılırsa tıklama kaybolmasın -->
   <script>
     (function () {
       var btn = document.getElementById("startBtn");
       var pending = false;
       btn.addEventListener("click", function () { pending = true; });
-      document.addEventListener("click", function (e) {
-        var extra = e.target.closest("[data-cta]");
-        if (extra) btn.click();
-      });
       document.addEventListener("DOMContentLoaded", function () {
         if (pending) btn.click();   // asıl işleyici artık bağlı, tıklamayı tekrarla
       });

@@ -227,6 +227,18 @@ body {
   font-size: clamp(16px, 2.4vw, 19px);
   color: #46505e;
 }
+/* butonun hemen üstündeki son itki */
+.lp-hero__kicker {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 3.4vw, 29px);
+  color: #101a2e;
+  margin: clamp(22px, 4vw, 34px) 0 5px;
+}
+.lp-hero__note {
+  margin: 0;
+  font-size: clamp(14.5px, 2.1vw, 17px);
+  color: #46505e;
+}
 
 /* --- ana buton --- */
 .lp-cta {
@@ -237,7 +249,7 @@ body {
   width: 100%;
   max-width: 470px;
   min-height: 62px;
-  margin: 26px auto 12px;
+  margin: 18px auto 12px;
   padding: 16px 30px;
   border: 2px solid var(--orange);
   border-radius: 14px;
@@ -369,22 +381,6 @@ body {
   text-align: left;
 }
 .lp-badges svg { width: 34px; height: 34px; flex: none; }
-
-/* --- alt kapanış --- */
-.lp-end {
-  text-align: center;
-  padding: clamp(26px, 5vw, 44px) 20px clamp(30px, 6vw, 52px);
-  background: linear-gradient(180deg, transparent, rgba(238,245,251,.75));
-  border-top: 1px solid var(--line);
-}
-.lp-end h2 {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(21px, 3.6vw, 30px);
-  color: #101a2e;
-  margin: 0 0 6px;
-}
-.lp-end p { margin: 0 0 4px; color: #46505e; }
-.lp-end .lp-cta { margin-top: 20px; }
 
 /* --- mobil --- */
 @media (max-width: 640px) {
