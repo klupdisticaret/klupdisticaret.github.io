@@ -175,8 +175,10 @@ body {
 .lp { --pane: 1120px; }
 
 /* --- üst bar --- */
+/* Zemin saf siyah: logonun kendi arka planı da #000, böylece logo dikdörtgeni
+   barın içinde belli olmuyor, tek parça görünüyor. */
 .lp-top {
-  background: #0b0d10;
+  background: #000;
   color: #fff;
   padding: 14px 20px;
   border-bottom: 3px solid var(--orange);
@@ -206,19 +208,11 @@ body {
   white-space: nowrap;
 }
 .lp-top__badge svg { width: 26px; height: 26px; flex: none; }
-.lp-top__globe { width: 42px; height: 42px; flex: none; }
-.lp-top__name {
-  font-weight: 800;
-  font-size: clamp(17px, 3.6vw, 23px);
-  letter-spacing: .3px;
-  line-height: 1.15;
-}
-.lp-top__sub {
+.lp-top__logo {
   display: block;
-  font-weight: 500;
-  font-size: .62em;
-  color: rgba(255,255,255,.72);
-  letter-spacing: 1.2px;
+  height: clamp(42px, 9vw, 50px);
+  width: auto;
+  flex: none;
 }
 
 /* --- başlık alanı --- */
