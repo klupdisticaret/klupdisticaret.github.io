@@ -187,7 +187,25 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-wrap: wrap;          /* dar ekranda rozet alt satıra insin, taşmasın */
 }
+/* 27 yıllık tecrübe: sayfanın en üstünde, girer girmez görünsün */
+.lp-top__badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid rgba(232,189,109,.5);
+  border-radius: 999px;
+  background: rgba(232,189,109,.13);
+  color: #f2dcb4;
+  font-size: clamp(12.5px, 2.2vw, 14.5px);
+  font-weight: 700;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+.lp-top__badge svg { width: 26px; height: 26px; flex: none; }
 .lp-top__globe { width: 42px; height: 42px; flex: none; }
 .lp-top__name {
   font-weight: 800;
@@ -268,11 +286,15 @@ body {
 .lp-cta:active { transform: translateY(1px); }
 .lp-cta:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 .lp-cta__chev { color: var(--orange); font-size: 1.05em; line-height: 1; }
+/* "Buraya bas" işareti: butondan dışarı doğru açılıp sönen turuncu halka.
+   Buton zaten turuncu çerçeveli olduğu için sabit halka fark edilmiyordu;
+   bu yüzden halka dışarı genişleyerek hareketle dikkat çekiyor. */
 @media (prefers-reduced-motion: no-preference) {
-  .lp-cta { animation: lpPulse 2s ease 1s 2; }
+  .lp-cta { animation: lpPulse 1.8s ease-out .8s 3; }
   @keyframes lpPulse {
-    0%, 100% { box-shadow: 0 10px 26px -10px rgba(16,26,46,.6); }
-    50%      { box-shadow: 0 0 0 4px rgba(242,106,27,.5), 0 10px 26px -10px rgba(16,26,46,.6); }
+    0%   { box-shadow: 0 0 0 0    rgba(242,106,27,.85), 0 10px 26px -10px rgba(16,26,46,.6); }
+    65%  { box-shadow: 0 0 0 16px rgba(242,106,27,0),   0 10px 26px -10px rgba(16,26,46,.6); }
+    100% { box-shadow: 0 0 0 0    rgba(242,106,27,0),   0 10px 26px -10px rgba(16,26,46,.6); }
   }
 }
 .lp-safe {
@@ -357,12 +379,13 @@ body {
 .lp-trust svg { width: 34px; height: 34px; flex: none; }
 
 /* --- rozetler --- */
+/* 27 yıl rozeti üst bara taşındıktan sonra burada tek madde kaldı */
 .lp-badges {
-  max-width: 700px;
+  max-width: 380px;
   margin: 0 auto;
   padding: 0 20px clamp(24px, 5vw, 40px);
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: clamp(10px, 1.6vw, 16px);
   list-style: none;
 }
@@ -387,7 +410,8 @@ body {
   .lp-cats   { grid-template-columns: repeat(2, 1fr); }
   .lp-trust  { grid-template-columns: 1fr; }
   .lp-trust li { flex-direction: row; text-align: left; padding: 14px 16px; }
-  .lp-badges { grid-template-columns: 1fr; }
+  /* rozet alt satıra indiğinde sağa yapışmasın, adla hizalansın */
+  .lp-top__badge { margin-left: 0; }
 }
 
 /* ---------------- FUNNEL ---------------- */
