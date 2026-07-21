@@ -197,7 +197,9 @@ body {
 .lp-top__badge {
   margin-left: auto;
   display: block;
-  height: clamp(59px, 11.8vw, 73px);   /* logoyla ayni oranda buyutuldu */
+  /* Kaynak 171x160 oldugu icin buyutme payi bol; ust sinir 86px'de tutuluyor.
+     Alt sinir 64px: 320px'lik dar telefonlarda logoyla yan yana sigmasi icin. */
+  height: clamp(64px, 14vw, 86px);
   width: auto;
   flex: none;
 }
@@ -399,6 +401,13 @@ body {
   .lp-cats   { grid-template-columns: repeat(2, 1fr); }
   .lp-trust  { grid-template-columns: 1fr; }
   .lp-trust li { flex-direction: row; text-align: left; padding: 14px 16px; }
+}
+
+/* Çok dar telefonlar (<=360px): logo + arma + aradaki 14px boşluk bara
+   sığmayıp arma alt satıra düşüyordu. İkisini birlikte küçültüyoruz. */
+@media (max-width: 360px) {
+  .lp-top__logo  { height: 52px; }
+  .lp-top__badge { height: 50px; }
 }
 
 /* ---------------- FUNNEL ---------------- */
