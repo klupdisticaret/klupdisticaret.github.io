@@ -180,7 +180,7 @@ body {
 .lp-top {
   background: #000;
   color: #fff;
-  padding: 14px 20px;
+  padding: 20px 20px 22px;   /* bar aşağı doğru biraz daha derin */
   border-bottom: 3px solid var(--orange);
 }
 .lp-top__in {
@@ -197,13 +197,15 @@ body {
 .lp-top__badge {
   margin-left: auto;
   display: block;
-  height: clamp(50px, 10vw, 62px);
+  height: clamp(59px, 11.8vw, 73px);   /* logoyla ayni oranda buyutuldu */
   width: auto;
   flex: none;
 }
 .lp-top__logo {
   display: block;
-  height: clamp(54px, 11.5vw, 68px);
+  /* Ust sinir 80px = logonun dogal yuksekligi. Kaynak dosya 246x80 ve
+     sitede daha buyugu yok; 80'i asarsak buyutme olur ve bulaniklasir. */
+  height: clamp(65px, 13.8vw, 80px);
   width: auto;
   flex: none;
 }
