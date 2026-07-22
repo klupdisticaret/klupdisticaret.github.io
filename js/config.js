@@ -31,7 +31,7 @@ const CONFIG = {
   /* --- Meta (Facebook) pikseli — reklam dönüşüm takibi ---
      Nereden bulunur: Etkinlik Yöneticisi → Veri Kümeleri → adın altındaki numara.
      15-16 hanelidir. Boş bırakılırsa takip tamamen kapalı kalır (site normal çalışır). */
-  META_PIXEL_ID: "907255669939228",
+  META_PIXEL_ID: "517991158551582",
 
   /* --- Müsait toplantı saatleri (yalnız Sıcak/VIP leadlere gösterilir) ---
      label: ekranda görünen yazı.  day: 0=Pazar ... 1=Pzt ... 6=Cmt.  time: "SS:DD" */
