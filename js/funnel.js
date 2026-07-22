@@ -66,6 +66,8 @@ document.getElementById("startBtn").addEventListener("click", () => {
   els.funnel.hidden = false;
   current = 0;
   if (typeof trackStep === "function") trackStep("start", 0);
+  // Meta: funnel'a giren ziyaretçi (henüz müşteri değil, ama niyet gösterdi)
+  if (typeof pixelEvent === "function") pixelEvent("InitiateCheckout");
   showStep();
   els.funnel.scrollIntoView({ behavior: "smooth" });
 });
@@ -303,6 +305,17 @@ function finish() {
   els.back.hidden = true;
   const p = buildProposal(state);
   window._lastProposal = p;
+
+  // Meta: ASIL DÖNÜŞÜM. Kişisel bilgi (isim/telefon) gönderilmez;
+  // yalnız sınıflandırma gider ki Meta "kaliteli lead"e göre optimize edebilsin.
+  if (typeof pixelEvent === "function") pixelEvent("Lead", {
+    content_category: p.group,       // ürün grubu
+    content_name: p.klass,           // Düşük Öncelikli / Takip / Sıcak / VIP
+    lead_group: p.leadGroup,         // A / B / C / D
+    tonnage: p.tonnage,
+    budget: p.budget,
+  });
+
   renderProposal(p);
 }
 
@@ -347,6 +360,10 @@ function renderProposal(p) {
   if (p.showWhatsapp) {
     const refreshLinks = () => { document.getElementById("waBtn").href = whatsappLink(p); };
     refreshLinks();
+    // Meta: WhatsApp'a geçen en sıcak temas. Yeni sekme açılmadan önce gider.
+    document.getElementById("waBtn").addEventListener("click", () => {
+      if (typeof pixelEvent === "function") pixelEvent("Contact", { content_name: p.klass });
+    });
     const area = document.getElementById("meetingArea");
     if (p.showMeeting) renderMeeting(area, p, refreshLinks);
   }
