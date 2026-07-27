@@ -123,14 +123,23 @@ async function sbDeleteAvailability(date) {
 // ADMIN: birden fazla lead ekler (CSV/Excel içe aktarma).
 // 50'lik gruplar hâlinde gider. Dönüş: { eklenen, error }.
 async function sbAdminInsertMany(rows) {
-  if (!sb) return { eklenen: 0, error: "Supabase yok" };
+  if (!sb) return { eklenen: 0, error: "Veritabanı bağlantısı yok. Sayfayı yenileyip tekrar giriş yapın." };
+
+  // Oturum düşmüşse insert anon olarak gider: satırlar eklenir ama geri
+  // okunamaz ve "0 lead eklendi" gibi yanıltıcı bir sonuç çıkardı.
+  const { data: oturum } = await sb.auth.getSession();
+  if (!oturum || !oturum.session) {
+    return { eklenen: 0, error: "Oturumunuz sona ermiş. Sayfayı yenileyip tekrar giriş yapın." };
+  }
+
   let eklenen = 0;
   try {
     for (let i = 0; i < rows.length; i += 50) {
       const grup = rows.slice(i, i + 50);
       const { data, error } = await sb.from("leads").insert(grup).select("id");
       if (error) return { eklenen, error: error.message };
-      eklenen += (data || []).length;
+      // Hata yoksa satırlar yazılmıştır; data boş dönse bile grup sayılır.
+      eklenen += (data && data.length) ? data.length : grup.length;
     }
     return { eklenen, error: null };
   } catch (e) { return { eklenen, error: String(e) }; }

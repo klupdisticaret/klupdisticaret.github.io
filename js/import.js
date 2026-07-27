@@ -226,9 +226,14 @@ function impSatirdanLead(satir) {
   const tonaj = impTonajEsle(tonajHam);
   const butce = impButceEsle(butceHam);
 
+  // Telefon NORMALLEŞTİRİLMİŞ hâliyle saklanır. Ham değer "p:+905321234567"
+  // gibi gelir; olduğu gibi kaydedilirse panelde öyle görünür ve WhatsApp
+  // bağlantısı çalışmaz. Site formundan gelen leadlerle de aynı biçim olur.
+  const tel = impTelefonNorm(al("phone"));
+
   const state = {
-    company: al("company"), contact: al("contact"), phone: al("phone"),
-    whatsapp: al("phone"), email: al("email"),
+    company: al("company"), contact: al("contact"), phone: tel,
+    whatsapp: tel, email: al("email"),
     location: al("location"), port: al("port"),
     group: impGrupEsle(al("group")),
     tonnage: tonaj, budget: butce,
@@ -306,13 +311,22 @@ function impOnizle() {
   }
 }
 
-/* --- İçe aktar --- */
+/* --- İçe aktar ---
+   confirm()/alert() KULLANILMAZ. Sebep: Chrome'da bir kutu kapatılırken
+   "bu sayfanın ek iletişim kutuları oluşturmasını engelle" işaretlenirse
+   confirm() sessizce false döner ve içe aktarma hiç çalışmaz — kullanıcı
+   butona basar, hiçbir şey olmaz, hata da görünmez. Onay zaten önizlemede
+   veriliyor (kaç satır eklenecek yazıyor, buton da sayıyı söylüyor). */
 async function impCalistir() {
   const leadler = window._IMP_YUKLENECEK || [];
-  if (!leadler.length) return;
-  if (!confirm(leadler.length + " lead panele eklenecek.\n\nDevam edilsin mi?")) return;
-
+  const box = document.getElementById("impPreview");
   const btn = document.getElementById("impRun");
+
+  if (!leadler.length) {
+    if (box) box.innerHTML = '<p class="form-err">Eklenecek lead yok. Önce dosya seçin.</p>';
+    return;
+  }
+
   const eski = btn.textContent;
   btn.disabled = true; btn.textContent = "Ekleniyor…";
 
@@ -339,14 +353,23 @@ async function impCalistir() {
   const res = await sbAdminInsertMany(satirlar);
   btn.disabled = false; btn.textContent = eski;
 
-  if (res.error) { alert("İçe aktarma hatası: " + res.error +
-    (res.eklenen ? "\n\n" + res.eklenen + " lead eklendikten sonra durdu." : "")); }
-  else { alert("✓ " + res.eklenen + " lead eklendi."); }
+  if (res.error) {
+    // Hata hâlinde dosya ve önizleme DURUR: kullanıcı sütun eşleştirmesini
+    // düzeltip tekrar deneyebilsin, baştan dosya seçmek zorunda kalmasın.
+    box.innerHTML = '<p class="form-err">İçe aktarma hatası: ' + escapeHtml(res.error) + '</p>' +
+      (res.eklenen ? '<p class="row-hint">' + res.eklenen + ' lead eklendikten sonra durdu.</p>' : "") +
+      box.innerHTML;
+    return;
+  }
 
   document.getElementById("impFile").value = "";
   document.getElementById("impMap").innerHTML = "";
-  document.getElementById("impPreview").innerHTML = "";
   IMP_BASLIK = []; IMP_SATIR = []; IMP_ESLES = {};
+  window._IMP_YUKLENECEK = [];
+  btn.disabled = true; btn.textContent = "Önce dosya seçin";
+
+  box.innerHTML = '<p class="save-ok">✓ ' + res.eklenen +
+    ' lead eklendi. Aşağıdaki listede görünüyorlar.</p>';
   await renderAll();
 }
 
