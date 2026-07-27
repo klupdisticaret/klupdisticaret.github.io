@@ -10,6 +10,7 @@
 const IMP_ALANLAR = [
   { key: "company",    ad: "Şirket adı",   ipuclari: ["company_name", "company", "şirket", "sirket", "firma"] },
   { key: "contact",    ad: "Yetkili kişi", ipuclari: ["full_name", "yetkili", "ad_soyad", "ad soyad", "isim", "name"] },
+  { key: "group",      ad: "Ürün grubu",   ipuclari: ["grubunu", "ürün grubu", "urun grubu", "grup", "group"] },
   { key: "phone",      ad: "Telefon",      ipuclari: ["phone_number", "phone", "telefon", "gsm", "tel"] },
   { key: "email",      ad: "E-posta",      ipuclari: ["email", "e-posta", "eposta", "mail"] },
   { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "sehir", "il", "location"] },
@@ -30,8 +31,10 @@ function impCSVCoz(metin) {
   metin = metin.replace(/^﻿/, "");
   const ilkSon = metin.indexOf("\n");
   const ilk = ilkSon >= 0 ? metin.slice(0, ilkSon) : metin;
-  // Meta virgül kullanır; Excel'den gelen Türkçe dosyalar noktalı virgül olabilir
-  const ayr = ilk.split(";").length > ilk.split(",").length ? ";" : ",";
+  // Ayraç ilk satırdaki sayıya göre seçilir. Meta'nın "Leads" indirmesi SEKME
+  // kullanır; Excel'den gelen Türkçe dosyalar noktalı virgül, klasik CSV virgül.
+  const aday = ["\t", ";", ","];
+  const ayr = aday.reduce((a, b) => ilk.split(b).length > ilk.split(a).length ? b : a);
 
   const satirlar = [];
   let satir = [], alan = "", tirnak = false;
@@ -99,10 +102,37 @@ function impButceEsle(ham) {
   return "";
 }
 
+/* Ürün grubu: Meta cevabı "dondurulmuş_meyve" / "_bakliyat" gibi gelir.
+   Sitenin kullandığı kısa koda çevrilir (funnel.js ile aynı: meyve/sebze/
+   deniz/bakliyat/hepsi), böylece panelde ve tedarik ekranında aynı görünür. */
+function impGrupEsle(ham) {
+  if (!ham) return "";
+  const s = String(ham).toLocaleLowerCase("tr");
+  if (/hepsi|tümü|tumu|birden_?fazla|hepsini/.test(s)) return "hepsi";
+  if (/bakliyat|fasulye|mercimek|nohut/.test(s))       return "bakliyat";
+  if (/deniz|balık|balik|su_?ürün|su_?urun/.test(s))   return "deniz";
+  if (/sebze/.test(s))                                 return "sebze";
+  if (/meyve/.test(s))                                 return "meyve";
+  return "";
+}
+
 /* Telefon: Meta "p:+905321234567" gibi verebilir -> son 10 hane */
 function impTelefonNorm(ham) {
   const d = String(ham || "").replace(/\D/g, "");
   return d.length > 10 ? d.slice(-10) : d;
+}
+
+/* --- Metni kodlamasına göre çöz ---
+   Meta'nın "Leads indir" dosyası UTF-16 LE'dir (her karakterin arasında 0x00
+   baytı vardır). Düz text() ile okunursa harfler arasında boşluk varmış gibi
+   görünür ve hiçbir sütun eşleşmez. BOM'a bakıp doğru çözücüyü seçiyoruz. */
+function impMetneCevir(buf) {
+  const b = new Uint8Array(buf);
+  if (b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE)
+    return new TextDecoder("utf-16le").decode(buf);
+  if (b.length >= 2 && b[0] === 0xFE && b[1] === 0xFF)
+    return new TextDecoder("utf-16be").decode(buf);
+  return new TextDecoder("utf-8").decode(buf);
 }
 
 /* --- Dosyayı oku --- */
@@ -116,14 +146,24 @@ async function impDosyaOku(dosya) {
     return XLSX.utils.sheet_to_json(sh, { header: 1, raw: false, defval: "" })
       .filter(r => r.some(h => String(h).trim().length));
   }
-  return impCSVCoz(await dosya.text());
+  return impCSVCoz(impMetneCevir(await dosya.arrayBuffer()));
 }
+
+/* Meta'nın teknik sütunları. Otomatik eşleştirmede atlanır: aksi hâlde
+   "ad_name" / "campaign_name" gibi başlıklar "name" ipucuna takılıp
+   Yetkili kişi alanına reklam adını yazdırıyordu. Elle seçilebilir kalır. */
+const IMP_YOKSAY = [
+  "ad_id", "ad_name", "adset_id", "adset_name", "campaign_id", "campaign_name",
+  "form_id", "form_name", "is_organic", "platform", "lead_status", "id",
+];
 
 /* --- Başlıkları hedef alanlara otomatik eşle --- */
 function impOtoEslestir() {
   IMP_ESLES = {};
   const norm = s => String(s).toLocaleLowerCase("tr").replace(/[\s_-]+/g, "_").trim();
   const kullanilan = new Set();
+  IMP_BASLIK.forEach((b, i) => { if (IMP_YOKSAY.includes(norm(b))) kullanilan.add(i); });
+
   IMP_ALANLAR.forEach(alan => {
     for (let i = 0; i < IMP_BASLIK.length; i++) {
       if (kullanilan.has(i)) continue;
@@ -170,6 +210,7 @@ function impSatirdanLead(satir) {
     company: al("company"), contact: al("contact"), phone: al("phone"),
     whatsapp: al("phone"), email: al("email"),
     location: al("location"), port: al("port"),
+    group: impGrupEsle(al("group")),
     tonnage: tonaj, budget: butce,
     timing: al("timing"), experience: al("experience"),
     products: [],
@@ -224,11 +265,12 @@ function impOnizle() {
   const gost = yeni.slice(0, 12);
   if (gost.length) {
     h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
-      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Tonaj</th><th>Bütçe</th><th>Sınıf</th></tr></thead><tbody>' +
+      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Tonaj</th><th>Bütçe</th><th>Sınıf</th></tr></thead><tbody>' +
       gost.map(l => '<tr>' +
         '<td>' + escapeHtml(l.company || "—") + '</td>' +
         '<td>' + escapeHtml(l.contact || "—") + '</td>' +
         '<td>' + escapeHtml(l.phone || "—") + '</td>' +
+        '<td>' + escapeHtml(l.group || "—") + '</td>' +
         '<td>' + (l._tonajTanindi ? escapeHtml(l.tonnage || "—") : '⚠️ ' + escapeHtml(l._tonajHam)) + '</td>' +
         '<td>' + (l._butceTanindi ? escapeHtml(l.budget || "—") : '⚠️ ' + escapeHtml(l._butceHam)) + '</td>' +
         '<td>' + escapeHtml(l.klass || "—") + '</td>' +
@@ -259,10 +301,14 @@ async function impCalistir() {
       ref_no: "IMP-" + Date.now().toString().slice(-8) + "-" + i,
       company: l.company, contact: l.contact, phone: l.phone, whatsapp: l.whatsapp,
       email: l.email, location: l.location, port: l.port,
+      group_type: l.group,
       tonnage: l.tonnage, budget: l.budget, timing: l.timing, experience: l.experience,
       products: [], score: l.score, klass: l.klass, lead_group: l.leadGroup,
       wa_shown: l.showWhatsapp, meeting_shown: l.showMeeting,
-      lead_status: "Yeni lead",
+      // Kolon adı "status" (lead_status DEĞİL): admin.js yeni CRM alanlarını
+      // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
+      // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.
+      status: "Yeni lead",
       notes: "Meta reklamından içe aktarıldı",
     };
     const t = Date.parse(l.createdAt);
