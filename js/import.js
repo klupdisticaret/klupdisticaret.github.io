@@ -116,10 +116,17 @@ function impGrupEsle(ham) {
   return "";
 }
 
-/* Telefon: Meta "p:+905321234567" gibi verebilir -> son 10 hane */
+/* Telefon: Meta "p:+905321234567" gibi verebilir.
+   Türkiye numaraları 10 haneye indirilir (5321234567) — çift kayıt kontrolü
+   sitedeki formdan gelenlerle aynı biçimde çalışsın diye.
+   YURT DIŞI numaralarda ülke kodu KORUNUR: körlemesine son 10 haneyi almak
+   "+49 176 7028213" gibi bir numarayı tanınmaz hâle getiriyor, hem yanlış
+   görünüyor hem de farklı ülkelerden iki numara yanlışlıkla eşleşebiliyordu. */
 function impTelefonNorm(ham) {
   const d = String(ham || "").replace(/\D/g, "");
-  return d.length > 10 ? d.slice(-10) : d;
+  if (d.length === 12 && d.startsWith("90")) return d.slice(2);  // 905321234567
+  if (d.length === 11 && d.startsWith("0"))  return d.slice(1);  // 05321234567
+  return d;                                                       // 10 hane veya yurt dışı
 }
 
 /* --- Metni kodlamasına göre çöz ---
@@ -135,18 +142,31 @@ function impMetneCevir(buf) {
   return new TextDecoder("utf-8").decode(buf);
 }
 
+/* Dosya GERÇEKTEN elektronik tablo mu? Uzantıya değil içeriğe bakılır.
+   Sebep: Meta bazen UTF-16 metin dosyasını ".xls" adıyla indiriyor; uzantıya
+   güvenilirse SheetJS'e metin verilip bozuk sonuç çıkıyordu. Tersi de olur:
+   gerçek bir xlsx ".csv" adıyla kaydedilmiş olabilir.
+     PK      -> xlsx/ods (zip)
+     D0 CF   -> eski ikili .xls (OLE2) */
+function impTabloMu(buf) {
+  const b = new Uint8Array(buf, 0, Math.min(8, buf.byteLength));
+  return (b[0] === 0x50 && b[1] === 0x4B) || (b[0] === 0xD0 && b[1] === 0xCF);
+}
+
 /* --- Dosyayı oku --- */
 async function impDosyaOku(dosya) {
-  const ad = (dosya.name || "").toLowerCase();
-  if (ad.endsWith(".xlsx") || ad.endsWith(".xls")) {
+  const buf = await dosya.arrayBuffer();
+
+  if (impTabloMu(buf)) {
     await impSheetJSYukle();
-    const buf = await dosya.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
     const sh = wb.Sheets[wb.SheetNames[0]];
     return XLSX.utils.sheet_to_json(sh, { header: 1, raw: false, defval: "" })
       .filter(r => r.some(h => String(h).trim().length));
   }
-  return impCSVCoz(impMetneCevir(await dosya.arrayBuffer()));
+
+  // Metin dosyası (uzantısı .csv, .xls, .txt — fark etmez)
+  return impCSVCoz(impMetneCevir(buf));
 }
 
 /* Meta'nın teknik sütunları. Otomatik eşleştirmede atlanır: aksi hâlde
