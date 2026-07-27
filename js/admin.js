@@ -492,18 +492,25 @@ function download(name, content, type) {
   a.download = name; a.click();
   URL.revokeObjectURL(a.href);
 }
-document.getElementById("impFile").addEventListener("change", impDosyaSecildi);
-document.getElementById("impRun").addEventListener("click", impCalistir);
-document.getElementById("funnelRange").addEventListener("change", e => {
-  funnelGun = +e.target.value; renderFunnel();
-});
-document.getElementById("bulkDel").addEventListener("click", bulkDelete);
-document.getElementById("bulkClear").addEventListener("click", () => {
-  SELECTED.clear(); renderTable(getFiltered());
-});
-document.getElementById("exportCsv").addEventListener("click", exportCSV);
-document.getElementById("exportJson").addEventListener("click", exportJSON);
-document.getElementById("refresh").addEventListener("click", renderAll);
+/* Eleman yoksa sessizce atla. Öncesinde düz getElementById(...).addEventListener
+   kullanılıyordu; tarayıcıda admin.html'in ESKİ sürümü önbellekten gelip
+   admin.js'in yenisi yüklendiğinde (ya da tersi) eksik bir eleman TypeError
+   fırlatıyor, script orada duruyor ve ALTTAKİ TÜM bağlantılar kurulmuyordu —
+   yenile/dışa aktar/toplu silme çalışmaz hâle geliyordu. */
+function on(id, olay, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(olay, fn);
+  else console.warn("admin: '" + id + "' bulunamadı (admin.html eski sürüm olabilir — Ctrl+Shift+R).");
+}
+
+on("impFile", "change", impDosyaSecildi);
+on("impRun", "click", impCalistir);
+on("funnelRange", "change", e => { funnelGun = +e.target.value; renderFunnel(); });
+on("bulkDel", "click", bulkDelete);
+on("bulkClear", "click", () => { SELECTED.clear(); renderTable(getFiltered()); });
+on("exportCsv", "click", exportCSV);
+on("exportJson", "click", exportJSON);
+on("refresh", "click", renderAll);
 
 /* --- Funnel düşüş raporu (ziyaretçi hangi adımda vazgeçti?) --- */
 const FUNNEL_ADIMLAR = [
