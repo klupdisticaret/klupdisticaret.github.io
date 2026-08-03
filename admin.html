@@ -113,6 +113,14 @@
     .filter-btn .cnt { opacity:.7; font-weight:700; margin-left:5px; }
     .filter-btn.is-active .cnt { opacity:.95; }
     .flabel-lbl { font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:2px 0 7px; }
+    /* Tablodaki ürün grubu rozeti */
+    .grp-badge { padding:3px 9px; border-radius:999px; font-size:.74rem; font-weight:700; white-space:nowrap; display:inline-block; }
+    .grp-meyve    { background:#ffe3ec; color:#b02a55; }
+    .grp-sebze    { background:#e2f5dd; color:#3f7a15; }
+    .grp-deniz    { background:#dcefff; color:#1462a8; }
+    .grp-bakliyat { background:#f0e6d6; color:#7a5a1e; }
+    .grp-hepsi    { background:#ece9f7; color:#5b4fa0; }
+    .grp-yok      { background:transparent; color:var(--muted); font-weight:400; }
     .due-late { color:#c0392b; font-weight:700; }
     .due-today { color:var(--orange-dark); font-weight:700; }
     .due-none { color:var(--muted); }
@@ -292,6 +300,8 @@
 
     <div class="panel">
       <h3>Tüm Lead'ler</h3>
+      <p class="flabel-lbl">Ürün grubu</p>
+      <div class="filters" id="groupFilters"></div>
       <p class="flabel-lbl">Lead durumu</p>
       <div class="filters" id="filters"></div>
       <p class="flabel-lbl">Aksiyon</p>
@@ -324,7 +334,9 @@
   <script src="js/config.js?v=20"></script>
   <script src="js/supabase.js?v=28"></script>
   <script src="js/scoring.js?v=31"></script>
+  <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
+  <script src="js/products.js?v=49"></script>
   <script src="js/import.js?v=5"></script>
-  <script src="js/admin.js?v=47"></script>
+  <script src="js/admin.js?v=49"></script>
 </body>
 </html>

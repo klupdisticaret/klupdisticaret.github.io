@@ -12,6 +12,7 @@ const pwErr = document.getElementById("pwErr");
 let CACHE = [];
 let activeStatus = "Tümü";
 let activeAction = "Tüm aksiyonlar";
+let activeGroup = "tumu";   // ürün grubu filtresi (aşağıdaki GROUP_FILTERS anahtarları)
 let SELECTED = new Set();   // çoklu seçim: lead anahtarları (Supabase'de id, yereldeyse refNo)
 
 // Supabase kaydında id, localStorage yedeğinde refNo tekil anahtardır.
@@ -56,6 +57,44 @@ function todayStr() { const d = new Date(); return d.getFullYear()+"-"+String(d.
 const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Cevap bekleniyor","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
 // Aksiyon filtreleri (takip tarihine göre)
 const ACTION_FILTERS = ["Tüm aksiyonlar","Bugün takip edilecekler","Geciken takipler","Takip tarihi olmayanlar"];
+
+/* --- Ürün grubu filtreleri ---
+   key: lead.group alanındaki değer ("tumu" ve "yok" sanal anahtarlardır).
+   "hepsi" seçen müşteri ayrı butonda listelenir; tek tek grup filtrelerinde çıkmaz. */
+const GROUP_FILTERS = [
+  { key: "tumu",     label: "Tümü" },
+  { key: "meyve",    label: "🍓 Dondurulmuş Meyve" },
+  { key: "sebze",    label: "🥦 Dondurulmuş Sebze" },
+  { key: "deniz",    label: "🐟 Dondurulmuş Deniz Ürünleri" },
+  { key: "bakliyat", label: "🥜 Bakliyat" },
+  { key: "hepsi",    label: "🧺 Hepsi" },
+  { key: "yok",      label: "Belirtilmemiş" },   // sayısı 0 ise gizlenir
+];
+// Tabloda ve grup sütununda gösterilecek kısa etiketler
+// (Not: 🫘 ve ❔ Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
+const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi" };
+
+/* Lead'in ürün grubunu döndürür.
+   group_type boşsa (çoğu Meta/CSV içe aktarması böyle) seçilen ürünlerden
+   tahmin edilir: "Karides" → deniz, "Brokoli" → sebze… Birden fazla farklı
+   gruba ait ürün varsa "hepsi" kabul edilir. Hiçbiri tutmazsa "yok". */
+function leadGroupOf(l) {
+  const g = String(l.group || "").toLocaleLowerCase("tr");
+  if (["meyve","sebze","deniz","bakliyat","hepsi"].includes(g)) return g;
+
+  const urunler = l.products || [];
+  if (urunler.length && typeof PRODUCTS !== "undefined" && typeof normalizeTR === "function") {
+    const bulunan = new Set();
+    urunler.forEach(u => {
+      const n = normalizeTR(u);
+      const p = PRODUCTS.find(x => normalizeTR(x.name) === n);
+      if (p) bulunan.add(p.type);
+    });
+    if (bulunan.size === 1) return [...bulunan][0];
+    if (bulunan.size > 1)   return "hepsi";
+  }
+  return "yok";
+}
 
 /* --- Giriş / oturum --- */
 async function tryLogin() {
@@ -156,9 +195,11 @@ function matchActionFilter(l) {
   if (activeAction === "Takip tarihi olmayanlar") return !l.followUpDate;
   return true;
 }
-function getFiltered() { return CACHE.filter(l => matchStatusFilter(l) && matchActionFilter(l)); }
+function matchGroupFilter(l) { return activeGroup === "tumu" || leadGroupOf(l) === activeGroup; }
+function getFiltered() { return CACHE.filter(l => matchStatusFilter(l) && matchActionFilter(l) && matchGroupFilter(l)); }
 
 function statusCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => l.leadStatus === name).length; }
+function groupCount(key) { return key === "tumu" ? CACHE.length : CACHE.filter(l => leadGroupOf(l) === key).length; }
 function actionCount(name) {
   const t = todayStr();
   if (name === "Tüm aksiyonlar") return CACHE.length;
@@ -169,6 +210,21 @@ function actionCount(name) {
 
 /* --- Filtre butonları (durum + aksiyon) --- */
 function renderFilters() {
+  const gf = document.getElementById("groupFilters");
+  if (gf) {
+    gf.innerHTML = "";
+    GROUP_FILTERS.forEach(({ key, label }) => {
+      const n = groupCount(key);
+      // "Belirtilmemiş" ve "Hepsi" butonları, o grupta lead yoksa yer kaplamasın.
+      // (Ama seçili durumdaysa gizlemeyiz; yoksa aktif filtre görünmez olur.)
+      if (n === 0 && key !== activeGroup && (key === "yok" || key === "hepsi")) return;
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (key === activeGroup ? " is-active" : "");
+      b.innerHTML = escapeHtml(label) + ` <span class="cnt">${n}</span>`;
+      b.addEventListener("click", () => { activeGroup = key; renderFilters(); renderTable(getFiltered()); });
+      gf.appendChild(b);
+    });
+  }
   const sf = document.getElementById("filters");
   if (sf) {
     sf.innerHTML = "";
@@ -249,12 +305,13 @@ function renderTable(leads) {
   }
   const head = `<tr>
     <th class="c-sel"><input type="checkbox" id="selAll" title="Görünen tümünü seç" aria-label="Görünen tümünü seç"></th>
-    <th>Tarih</th><th>Firma</th><th>Tonaj</th><th>Sınıf</th>
+    <th>Tarih</th><th>Grup</th><th>Firma</th><th>Tonaj</th><th>Sınıf</th>
     <th>Durum</th><th>Sonraki takip</th><th>Telefon</th><th>Sil</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td class="c-sel" data-label="Seç"><input type="checkbox" class="row-sel" data-idx="${idx}"
       ${SELECTED.has(leadKey(l)) ? "checked" : ""} aria-label="Bu lead'i seç"></td>
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
+    <td data-label="Grup">${groupCell(l)}</td>
     <td data-label="Firma">${escapeHtml(l.company)}</td>
     <td data-label="Tonaj">${escapeHtml(l.tonnage)}</td>
     <td data-label="Sınıf"><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(klassShort(l.klass))}</span></td>
@@ -714,6 +771,12 @@ function followCell(s) {
   if (s === t) return '<span class="due-today">'+shown+' • bugün</span>';
   if (s < t)  return '<span class="due-late">'+shown+' • gecikti</span>';
   return shown;
+}
+// Tablodaki "Grup" hücresi
+function groupCell(l) {
+  const g = leadGroupOf(l);
+  if (g === "yok") return '<span class="grp-badge grp-yok">—</span>';
+  return '<span class="grp-badge grp-'+g+'">'+escapeHtml(GROUP_SHORT[g] || g)+'</span>';
 }
 function cssClass(klass) {
   return {
