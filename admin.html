@@ -120,6 +120,7 @@
     .grp-deniz    { background:#dcefff; color:#1462a8; }
     .grp-bakliyat { background:#f0e6d6; color:#7a5a1e; }
     .grp-hepsi    { background:#ece9f7; color:#5b4fa0; }
+    .grp-cin      { background:#ffe0d9; color:#b3341c; }
     .grp-yok      { background:transparent; color:var(--muted); font-weight:400; }
     .due-late { color:#c0392b; font-weight:700; }
     .due-today { color:var(--orange-dark); font-weight:700; }
@@ -263,6 +264,9 @@
       <p class="row-hint">Meta Ads Manager'dan indirdiğiniz lead dosyasını seçin (.csv veya .xlsx).
         Sütunlar otomatik eşleştirilir; yanlışsa aşağıdan elle düzeltebilirsiniz. Eklemeden önce önizleme gösterilir.</p>
       <input type="file" id="impFile" accept=".csv,.xlsx,.xls" class="text-input">
+      <label class="field-label" for="impGroup" style="margin-top:14px">Bu dosyadaki leadler hangi hizmete ait?</label>
+      <select id="impGroup" class="text-input"></select>
+      <p class="row-hint" id="impGroupHint" style="margin-top:7px"></p>
       <div id="impMap" class="imp-map"></div>
       <div id="impPreview"></div>
       <button class="btn btn--cta btn--sm" id="impRun" disabled style="margin-top:12px">Önce dosya seçin</button>
@@ -336,7 +340,7 @@
   <script src="js/scoring.js?v=31"></script>
   <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
   <script src="js/products.js?v=49"></script>
-  <script src="js/import.js?v=6"></script>
-  <script src="js/admin.js?v=49"></script>
+  <script src="js/import.js?v=7"></script>
+  <script src="js/admin.js?v=50"></script>
 </body>
 </html>

@@ -68,11 +68,27 @@ const GROUP_FILTERS = [
   { key: "deniz",    label: "🐟 Dondurulmuş Deniz Ürünleri" },
   { key: "bakliyat", label: "🥜 Bakliyat" },
   { key: "hepsi",    label: "🧺 Hepsi" },
+  { key: "cin",      label: "🏮 Çin'den Ürün Getirme" },  // ayrı hizmet (dondurulmuş gıda değil)
   { key: "yok",      label: "Belirtilmemiş" },   // sayısı 0 ise gizlenir
 ];
 // Tabloda ve grup sütununda gösterilecek kısa etiketler
-// (Not: 🫘 ve ❔ Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
-const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi" };
+// (Not: 🫘 ❔ 🇨🇳 Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
+const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi", cin:"🏮 Çin" };
+// Geçerli grup/hizmet anahtarları ("tumu" ve "yok" sanaldır, listede yer almaz)
+const GROUP_KEYS = GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok").map(g => g.key);
+
+/* Müşteri kartındaki "Ürün grubu / Hizmet" açılır listesi.
+   Tanımadığımız bir değer kayıtlıysa (eski/elle girilmiş) listeye olduğu gibi
+   eklenir — kart açılıp kaydedildiğinde o bilgi silinmesin diye. */
+function groupOpt(secili) {
+  const s = String(secili || "");
+  const sec = v => (v === s ? " selected" : "");
+  let h = `<option value=""${sec("")}>— Belirtilmemiş —</option>`;
+  h += GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok")
+        .map(g => `<option value="${g.key}"${sec(g.key)}>${escapeHtml(g.label)}</option>`).join("");
+  if (s && !GROUP_KEYS.includes(s)) h += `<option value="${escapeHtml(s)}" selected>${escapeHtml(s)}</option>`;
+  return h;
+}
 
 /* Lead'in ürün grubunu döndürür.
    group_type boşsa (çoğu Meta/CSV içe aktarması böyle) seçilen ürünlerden
@@ -80,7 +96,7 @@ const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz"
    gruba ait ürün varsa "hepsi" kabul edilir. Hiçbiri tutmazsa "yok". */
 function leadGroupOf(l) {
   const g = String(l.group || "").toLocaleLowerCase("tr");
-  if (["meyve","sebze","deniz","bakliyat","hepsi"].includes(g)) return g;
+  if (GROUP_KEYS.includes(g)) return g;
 
   const urunler = l.products || [];
   if (urunler.length && typeof PRODUCTS !== "undefined" && typeof normalizeTR === "function") {
@@ -444,7 +460,6 @@ function openCard(lead) {
       ${kv("WhatsApp", lead.whatsapp)}
       ${kv("Şehir", lead.location)}
       ${kv("Liman", lead.port)}
-      ${kv("Ürün tipi", lead.group)}
       ${kv("Girilen ürünler", (lead.products || []).join(", "))}
       ${kv("Tonaj", lead.tonnage)}
       ${kv("Bütçe", lead.budget)}
@@ -459,6 +474,7 @@ function openCard(lead) {
     </div>
 
     <div class="edit-grid">
+      <div class="field"><label class="field-label">Ürün grubu / Hizmet</label><select id="stGroup" class="text-input">${groupOpt(lead.group)}</select></div>
       <div class="field"><label class="field-label">Lead durumu</label><select id="stSelect" class="text-input">${opt(STATUSES, lead.leadStatus)}</select></div>
       <div class="field"><label class="field-label">Arama sonucu</label><select id="stCall" class="text-input">${opt(CALL_RESULTS, lead.callResult)}</select></div>
       <div class="field"><label class="field-label">Sonraki aksiyon</label><select id="stNext" class="text-input">${opt(NEXT_ACTIONS, lead.nextAction)}</select></div>
@@ -485,6 +501,7 @@ function openCard(lead) {
 
 async function saveCard(lead) {
   const msg = document.getElementById("stMsg");
+  lead.group        = document.getElementById("stGroup").value;
   lead.leadStatus   = document.getElementById("stSelect").value;
   lead.callResult   = document.getElementById("stCall").value;
   lead.nextAction   = document.getElementById("stNext").value;
@@ -497,13 +514,15 @@ async function saveCard(lead) {
   if (sb && lead.id != null) {
     msg.textContent = "Kaydediliyor…"; msg.className = "muted";
     const full = {
+      group_type: lead.group || null,
       lead_status: lead.leadStatus, call_result: lead.callResult, next_action: lead.nextAction,
       close_reason: lead.closeReason, next_followup: lead.followUpDate || null, notes: lead.adminNote,
     };
     let res = await sbAdminUpdate(lead.id, full);
     if (res.error && /column|schema cache|PGRST204/i.test(res.error)) {
       // Yeni kolonlar henüz eklenmemiş -> mevcut kolonları kaydet (kalanlar bu oturumda görünür)
-      res = await sbAdminUpdate(lead.id, { next_followup: lead.followUpDate || null, notes: lead.adminNote });
+      // group_type eski kolonlardan biri; yedek kayıtta da gönderilir ki hizmet değişikliği kaybolmasın.
+      res = await sbAdminUpdate(lead.id, { group_type: lead.group || null, next_followup: lead.followUpDate || null, notes: lead.adminNote });
       if (!res.error) {
         msg.innerHTML = "✓ Kaydedildi. <b>Not:</b> Durum/aksiyon alanlarının kalıcı olması için Supabase'e yeni kolonları ekleyin (kurulum SQL'i).";
         msg.className = "save-ok"; refresh(); return;
@@ -517,6 +536,7 @@ async function saveCard(lead) {
       const i = arr.findIndex(x => x.refNo === lead.refNo);
       if (i >= 0) {
         Object.assign(arr[i], {
+          group: lead.group,
           leadStatus: lead.leadStatus, callResult: lead.callResult, nextAction: lead.nextAction,
           followUpDate: lead.followUpDate, closeReason: lead.closeReason, adminNote: lead.adminNote,
           notes: lead.adminNote, nextFollowup: lead.followUpDate,
@@ -562,6 +582,9 @@ function on(id, olay, fn) {
 
 on("impFile", "change", impDosyaSecildi);
 on("impRun", "click", impCalistir);
+// İçe aktarmadaki hizmet seçicisi GROUP_FILTERS'tan dolar; import.js bu dosyadan
+// önce yüklendiği için kurulumu buradan yapılır.
+if (typeof impGrupSeciciKur === "function") impGrupSeciciKur();
 on("funnelRange", "change", e => { funnelGun = +e.target.value; renderFunnel(); });
 on("bulkDel", "click", bulkDelete);
 on("bulkClear", "click", () => { SELECTED.clear(); renderTable(getFiltered()); });

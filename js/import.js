@@ -26,6 +26,46 @@ let IMP_BASLIK = [];   // dosyadaki sütun başlıkları
 let IMP_SATIR  = [];   // dosyadaki veri satırları
 let IMP_ESLES  = {};   // { hedefAlan: sütunIndeksi }
 
+/* --- Kampanya (hizmet) damgası ---
+   Meta dosyalarında çoğu zaman "ürün grubu" sütunu hiç gelmez; o leadler panele
+   "Belirtilmemiş" düşer ve hangi kampanyadan geldikleri kaybolur. Buradan seçilen
+   hizmet dosyadaki TÜM satırlara uygulanır (dosyada grup sütunu olsa bile seçim
+   önceliklidir). Her dosya sonrası sıfırlanır — bir sonraki dosya yanlış
+   damgalanmasın diye. */
+let IMP_SABIT_GRUP = "";
+
+// Grup listesi admin.js'te (GROUP_FILTERS). Bu dosya ondan ÖNCE yüklendiği için
+// seçici, admin.js'in en altındaki kurulum satırından çağrılır.
+function impGrupSeciciKur() {
+  const s = document.getElementById("impGroup");
+  if (!s || typeof GROUP_FILTERS === "undefined") return;
+  s.innerHTML = '<option value="">— Dosyadan oku (varsayılan) —</option>' +
+    GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok")
+      .map(g => `<option value="${g.key}">${escapeHtml(g.label)}</option>`).join("");
+  s.value = IMP_SABIT_GRUP;
+  s.addEventListener("change", e => {
+    IMP_SABIT_GRUP = e.target.value;
+    impGrupIpucu();
+    if (IMP_SATIR.length) impOnizle();   // önizleme açıksa grup sütunu hemen güncellensin
+  });
+  impGrupIpucu();
+}
+
+// Seçili hizmetin adı (baştaki simge atılır — not alanına düz metin yazılsın diye)
+function impGrupAdi(key) {
+  if (typeof GROUP_FILTERS === "undefined") return key;
+  const g = GROUP_FILTERS.find(x => x.key === key);
+  return g ? g.label.replace(/^[^A-Za-zÇĞİÖŞÜçğıöşü]+/, "").trim() : key;
+}
+
+function impGrupIpucu() {
+  const p = document.getElementById("impGroupHint");
+  if (!p) return;
+  p.innerHTML = IMP_SABIT_GRUP
+    ? "Dosyadaki <b>tüm</b> leadler <b>" + escapeHtml(impGrupAdi(IMP_SABIT_GRUP)) + "</b> hizmetine işaretlenir."
+    : "Boş bırakırsanız grup dosyadaki sütundan okunur; sütun yoksa lead <b>Belirtilmemiş</b> kalır.";
+}
+
 /* --- CSV çözümleyici (tırnak, gömülü virgül, CRLF, BOM) --- */
 function impCSVCoz(metin) {
   metin = metin.replace(/^﻿/, "");
@@ -108,6 +148,8 @@ function impButceEsle(ham) {
 function impGrupEsle(ham) {
   if (!ham) return "";
   const s = String(ham).toLocaleLowerCase("tr");
+  // Çin kampanyası ayrı bir hizmet; dondurulmuş gıda gruplarından ÖNCE bakılır.
+  if (/çin|çın|cin|china/.test(s))                     return "cin";
   if (/hepsi|tümü|tumu|birden_?fazla|hepsini/.test(s)) return "hepsi";
   if (/bakliyat|fasulye|mercimek|nohut/.test(s))       return "bakliyat";
   if (/deniz|balık|balik|su_?ürün|su_?urun/.test(s))   return "deniz";
@@ -278,7 +320,7 @@ function impSatirdanLead(satir) {
     company: al("company"), contact: al("contact"), phone: tel,
     whatsapp: tel, email: al("email"),
     location: al("location"), port: al("port"),
-    group: impGrupEsle(al("group")),
+    group: IMP_SABIT_GRUP || impGrupEsle(al("group")),
     tonnage: tonaj, budget: butce,
     timing: al("timing"), experience: al("experience"),
     products: [],
@@ -448,7 +490,8 @@ async function impCalistir() {
       // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
       // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.
       status: "Yeni lead",
-      notes: "Meta reklamından içe aktarıldı",
+      // Hangi kampanyadan geldiği kayıtta kalsın
+      notes: "Meta reklamından içe aktarıldı" + (IMP_SABIT_GRUP ? " — " + impGrupAdi(IMP_SABIT_GRUP) : ""),
     };
     const t = Date.parse(l.createdAt);
     if (!isNaN(t)) r.created_at = new Date(t).toISOString();
@@ -481,6 +524,10 @@ async function impCalistir() {
   document.getElementById("impFile").value = "";
   document.getElementById("impMap").innerHTML = "";
   IMP_BASLIK = []; IMP_SATIR = []; IMP_ESLES = {};
+  // Hizmet seçimi de sıfırlanır: sıradaki dosya sessizce aynı kampanyaya damgalanmasın.
+  IMP_SABIT_GRUP = "";
+  const gs = document.getElementById("impGroup");
+  if (gs) { gs.value = ""; impGrupIpucu(); }
   window._IMP_YUKLENECEK = []; window._IMP_TAMAMLANACAK = [];
   btn.disabled = true; btn.textContent = "Önce dosya seçin";
 
