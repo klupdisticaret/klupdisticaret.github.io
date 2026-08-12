@@ -8,18 +8,18 @@
 /* Panelin kolonlarına karşılık gelen hedef alanlar.
    ipuclari: sütun başlığında bunlardan biri geçerse otomatik eşleşir. */
 const IMP_ALANLAR = [
-  { key: "company",    ad: "Şirket adı",   ipuclari: ["company_name", "company", "şirket", "sirket", "firma"] },
-  { key: "contact",    ad: "Yetkili kişi", ipuclari: ["full_name", "yetkili", "ad_soyad", "ad soyad", "isim", "name"] },
-  { key: "group",      ad: "Ürün grubu",   ipuclari: ["grubunu", "ürün grubu", "urun grubu", "grup", "group"] },
-  { key: "phone",      ad: "Telefon",      ipuclari: ["phone_number", "phone", "telefon", "gsm", "tel"] },
-  { key: "email",      ad: "E-posta",      ipuclari: ["email", "e-posta", "eposta", "mail"] },
-  { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "sehir", "il", "location"] },
+  { key: "company",    ad: "Şirket adı",   ipuclari: ["company name", "company", "şirket adı", "şirket", "firma adı", "firma", "kurum", "işletme"] },
+  { key: "contact",    ad: "Yetkili kişi", ipuclari: ["full name", "ad soyad", "adı soyadı", "adınız", "isim", "yetkili kişi", "yetkili", "iletişim kişisi", "kişi adı", "name", "ad", "adı"] },
+  { key: "group",      ad: "Ürün grubu",   ipuclari: ["ürün grubu", "grubunu", "grubu", "grup", "group", "kategori", "ürün tipi"] },
+  { key: "phone",      ad: "Telefon",      ipuclari: ["phone number", "phone", "telefon", "gsm", "cep", "tel", "numara"] },
+  { key: "email",      ad: "E-posta",      ipuclari: ["email", "e posta", "eposta", "e mail", "mail"] },
+  { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "şehr", "il", "location", "konum", "bulunduğunuz"] },
   { key: "port",       ad: "Liman",        ipuclari: ["port", "liman"] },
-  { key: "tonnage",    ad: "Tonaj",        ipuclari: ["tonaj", "tonnage", "ton", "miktar"] },
-  { key: "budget",     ad: "Bütçe",        ipuclari: ["butce", "bütçe", "budget", "usd"] },
-  { key: "timing",     ad: "Zamanlama",    ipuclari: ["zaman", "timing", "ne_zaman"] },
-  { key: "experience", ad: "Tecrübe",      ipuclari: ["tecrube", "tecrübe", "experience", "deneyim", "daha_once"] },
-  { key: "createdAt",  ad: "Tarih",        ipuclari: ["created_time", "created", "tarih", "date"] },
+  { key: "tonnage",    ad: "Tonaj",        ipuclari: ["tonaj", "tonnage", "kaç ton", "ton", "miktar"] },
+  { key: "budget",     ad: "Bütçe",        ipuclari: ["bütçe", "butce", "budget", "usd", "dolar", "bedel"] },
+  { key: "timing",     ad: "Zamanlama",    ipuclari: ["ne zaman", "ithalat zamanı", "zamanlama", "zaman", "timing"] },
+  { key: "experience", ad: "Tecrübe",      ipuclari: ["tecrübe", "experience", "deneyim", "daha önce", "geçmiş"] },
+  { key: "createdAt",  ad: "Tarih",        ipuclari: ["created time", "created", "tarih", "date", "oluşturma"] },
 ];
 
 let IMP_BASLIK = [];   // dosyadaki sütun başlıkları
@@ -177,21 +177,64 @@ const IMP_YOKSAY = [
   "form_id", "form_name", "is_organic", "platform", "lead_status", "id",
 ];
 
-/* --- Başlıkları hedef alanlara otomatik eşle --- */
+/* --- Başlıkları hedef alanlara otomatik eşle ---
+   Eşleştirme KELİME bazlıdır, düz "içeriyor mu" değil. Sebep: Meta'nın Türkçe
+   başlıkları soru metninden üretiliyor ("Ad ve soyad", "Adınız Soyadınız") ve
+   düz arama bunları "ad_soyad" ipucuna takamıyordu — Yetkili kişi sütunu hiç
+   eşleşmiyor, panelde isim alanı boş kalıyordu. */
+
+// "Şehriniz" -> "sehriniz": Türkçe harfleri sadeleştirir, noktalama atılır.
+function impNorm(s) {
+  return String(s).toLocaleLowerCase("tr")
+    .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+const impKelimeler = s => impNorm(s).split(" ").filter(Boolean);
+
+// Türkçe ek alır: "grubu" ipucu "grubunu" başlığına da uysun diye ön-ek kabul
+// edilir. 3 harften kısa ipuçlarında (ad, il) yalnızca birebir eşleşme geçerli;
+// aksi hâlde "ad" ipucu "adres" başlığını yakalardı.
+function impKelimeUyar(bas, ipucu) {
+  return bas === ipucu || (ipucu.length >= 3 && bas.startsWith(ipucu));
+}
+
+// İpucundaki TÜM kelimeler başlıkta geçmeli. Puan: uzun/çok kelimeli ipucu
+// daha güvenilir sayılır ("firma adı" ipucu "adı" ipucunu yener).
+function impSkor(basKelimeler, ipucu) {
+  const ik = impKelimeler(ipucu);
+  if (!ik.length) return 0;
+  let puan = 0;
+  for (const k of ik) {
+    if (!basKelimeler.some(b => impKelimeUyar(b, k))) return 0;
+    puan += 10 + k.length;
+  }
+  return puan + (basKelimeler.length === ik.length ? 5 : 0); // başlığın tamamıysa
+}
+
 function impOtoEslestir() {
   IMP_ESLES = {};
-  const norm = s => String(s).toLocaleLowerCase("tr").replace(/[\s_-]+/g, "_").trim();
-  const kullanilan = new Set();
-  IMP_BASLIK.forEach((b, i) => { if (IMP_YOKSAY.includes(norm(b))) kullanilan.add(i); });
+  const yoksay = new Set(IMP_YOKSAY.map(impNorm));
+  const adaylar = [];
 
-  IMP_ALANLAR.forEach(alan => {
-    for (let i = 0; i < IMP_BASLIK.length; i++) {
-      if (kullanilan.has(i)) continue;
-      const b = norm(IMP_BASLIK[i]);
-      if (alan.ipuclari.some(ip => b.includes(norm(ip)))) {
-        IMP_ESLES[alan.key] = i; kullanilan.add(i); break;
-      }
-    }
+  IMP_ALANLAR.forEach((alan, sira) => {
+    IMP_BASLIK.forEach((b, i) => {
+      if (yoksay.has(impNorm(b))) return;
+      const bk = impKelimeler(b);
+      let en = 0;
+      alan.ipuclari.forEach(ip => { en = Math.max(en, impSkor(bk, ip)); });
+      if (en) adaylar.push({ alan: alan.key, sutun: i, skor: en, sira });
+    });
+  });
+
+  // En güçlü eşleşme önce yerleşir: böylece zayıf bir ipucu ("name") güçlü bir
+  // alanın sütununu ("company name") kapmaz. Beraberlikte alan sırası belirler.
+  adaylar.sort((a, b) => b.skor - a.skor || a.sira - b.sira || a.sutun - b.sutun);
+  const doluAlan = new Set(), doluSutun = new Set();
+  adaylar.forEach(a => {
+    if (doluAlan.has(a.alan) || doluSutun.has(a.sutun)) return;
+    IMP_ESLES[a.alan] = a.sutun;
+    doluAlan.add(a.alan); doluSutun.add(a.sutun);
   });
 }
 
@@ -252,6 +295,33 @@ function impSatirdanLead(satir) {
   };
 }
 
+/* Zaten kayıtlı bir lead'de BOŞ olan alanlar, dosyada dolu geliyorsa
+   tamamlanır. Var olan bilgi ASLA ezilmez — yalnızca boşluklar doldurulur.
+   (Yetkili kişi sütunu eşleşmeden aktarılmış eski kayıtlar, aynı dosya tekrar
+   seçilerek isimlerine kavuşsun diye.) */
+const IMP_TAMAMLANABILIR = [
+  ["contact",    "contact"],
+  ["company",    "company"],
+  ["email",      "email"],
+  ["location",   "location"],
+  ["port",       "port"],
+  ["group",      "group_type"],
+  ["tonnage",    "tonnage"],
+  ["budget",     "budget"],
+  ["timing",     "timing"],
+  ["experience", "experience"],
+];
+
+function impEksikleri(dosyaLead, kayit) {
+  const alanlar = {};
+  IMP_TAMAMLANABILIR.forEach(([anahtar, kolon]) => {
+    const yeniDeger = String(dosyaLead[anahtar] || "").trim();
+    const eski = String(kayit[anahtar] || "").trim();
+    if (yeniDeger && !eski) alanlar[kolon] = yeniDeger;
+  });
+  return alanlar;
+}
+
 /* --- Önizleme --- */
 function impOnizle() {
   const box = document.getElementById("impPreview");
@@ -261,29 +331,48 @@ function impOnizle() {
   const leadler = IMP_SATIR.map(impSatirdanLead);
 
   // Çift kayıt: paneldeki mevcut leadler + dosya içi tekrarlar (telefona göre)
-  const mevcut = new Set((CACHE || []).map(l => impTelefonNorm(l.phone)).filter(Boolean));
+  const mevcut = new Map();
+  (CACHE || []).forEach(l => {
+    const t = impTelefonNorm(l.phone);
+    if (t && !mevcut.has(t)) mevcut.set(t, l);
+  });
   const dosyada = new Set();
   leadler.forEach(l => {
     const t = impTelefonNorm(l.phone);
     l._telefonYok = !t;
     l._cift = t ? (mevcut.has(t) || dosyada.has(t)) : false;
+    l._tamamla = null;
+    if (t && mevcut.has(t)) {
+      const kayit = mevcut.get(t);
+      const alanlar = impEksikleri(l, kayit);
+      if (kayit.id && Object.keys(alanlar).length) {
+        l._tamamla = { id: kayit.id, alanlar, ad: l.contact || l.company || t };
+      }
+    }
     if (t) dosyada.add(t);
   });
 
   const yeni = leadler.filter(l => !l._cift && !l._telefonYok);
+  const tamamlanacak = leadler.filter(l => l._tamamla).map(l => l._tamamla);
   const cift = leadler.filter(l => l._cift).length;
   const telsiz = leadler.filter(l => l._telefonYok).length;
   const taninmayan = yeni.filter(l => !l._tonajTanindi || !l._butceTanindi).length;
 
   window._IMP_YUKLENECEK = yeni;
+  window._IMP_TAMAMLANACAK = tamamlanacak;
 
   let h = '<div class="fn-top">' +
     '<div class="fn-kpi"><b>' + leadler.length + '</b><span>dosyadaki satır</span></div>' +
     '<div class="fn-kpi"><b style="color:#1a7a45">' + yeni.length + '</b><span>eklenecek</span></div>' +
-    '<div class="fn-kpi"><b style="color:#c0392b">' + (cift + telsiz) + '</b><span>atlanacak</span></div>' +
+    (tamamlanacak.length ? '<div class="fn-kpi"><b style="color:#1a5fa8">' + tamamlanacak.length + '</b><span>tamamlanacak</span></div>' : "") +
+    '<div class="fn-kpi"><b style="color:#c0392b">' + (cift + telsiz - tamamlanacak.length) + '</b><span>atlanacak</span></div>' +
     '</div>';
 
-  if (cift)   h += '<p class="row-hint">↩︎ ' + cift + ' satır zaten kayıtlı (aynı telefon), atlanacak.</p>';
+  if (IMP_ESLES.contact == null)
+    h += '<p class="form-err">⚠️ <b>Yetkili kişi</b> sütunu eşleşmedi — bu hâlde leadler <b>isimsiz</b> aktarılır. Yukarıdaki eşleştirmeden ad/soyad sütununu seçin.</p>';
+  if (tamamlanacak.length)
+    h += '<p class="row-hint">🔄 ' + tamamlanacak.length + ' kayıt zaten var ama bazı alanları boş; dosyadaki bilgilerle <b>tamamlanacak</b> (dolu alanlar değişmez).</p>';
+  if (cift)   h += '<p class="row-hint">↩︎ ' + cift + ' satır zaten kayıtlı (aynı telefon), yeniden eklenmeyecek.</p>';
   if (telsiz) h += '<p class="row-hint">⚠️ ' + telsiz + ' satırda telefon yok — çift kontrolü yapılamadığı için atlanacak. Telefon sütununu doğru eşleştirdiğinizden emin olun.</p>';
   if (taninmayan) h += '<p class="fn-hint">⚠️ ' + taninmayan + ' satırda tonaj/bütçe cevabı tanınamadı. Bunlar yine eklenir ama <b>sınıflandırma boş kalır</b> (VIP/Sıcak hesaplanmaz). Aşağıdaki tabloda ⚠️ ile işaretli.</p>';
 
@@ -304,10 +393,25 @@ function impOnizle() {
       h += '<p class="row-hint">… ve ' + (yeni.length - gost.length) + ' satır daha.</p>';
   }
 
+  if (tamamlanacak.length) {
+    const g = tamamlanacak.slice(0, 8);
+    h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
+      '<th>Mevcut kayıt</th><th>Tamamlanacak alanlar</th></tr></thead><tbody>' +
+      g.map(t => '<tr><td>' + escapeHtml(t.ad) + '</td><td>' +
+        escapeHtml(Object.entries(t.alanlar).map(([k, v]) => k + ": " + v).join(" • ")) +
+        '</td></tr>').join("") + '</tbody></table></div>';
+    if (tamamlanacak.length > g.length)
+      h += '<p class="row-hint">… ve ' + (tamamlanacak.length - g.length) + ' kayıt daha.</p>';
+  }
+
   box.innerHTML = h;
   if (btn) {
-    btn.disabled = yeni.length === 0;
-    btn.textContent = yeni.length ? "⬆️ " + yeni.length + " lead'i içe aktar" : "Eklenecek lead yok";
+    btn.disabled = yeni.length === 0 && tamamlanacak.length === 0;
+    if (yeni.length && tamamlanacak.length)
+      btn.textContent = "⬆️ " + yeni.length + " lead ekle + " + tamamlanacak.length + " kaydı tamamla";
+    else if (yeni.length)        btn.textContent = "⬆️ " + yeni.length + " lead'i içe aktar";
+    else if (tamamlanacak.length) btn.textContent = "🔄 " + tamamlanacak.length + " kaydı tamamla";
+    else                          btn.textContent = "Eklenecek lead yok";
   }
 }
 
@@ -319,10 +423,11 @@ function impOnizle() {
    veriliyor (kaç satır eklenecek yazıyor, buton da sayıyı söylüyor). */
 async function impCalistir() {
   const leadler = window._IMP_YUKLENECEK || [];
+  const tamamlanacak = window._IMP_TAMAMLANACAK || [];
   const box = document.getElementById("impPreview");
   const btn = document.getElementById("impRun");
 
-  if (!leadler.length) {
+  if (!leadler.length && !tamamlanacak.length) {
     if (box) box.innerHTML = '<p class="form-err">Eklenecek lead yok. Önce dosya seçin.</p>';
     return;
   }
@@ -350,7 +455,7 @@ async function impCalistir() {
     return r;
   });
 
-  const res = await sbAdminInsertMany(satirlar);
+  const res = satirlar.length ? await sbAdminInsertMany(satirlar) : { eklenen: 0, error: null };
   btn.disabled = false; btn.textContent = eski;
 
   if (res.error) {
@@ -362,14 +467,28 @@ async function impCalistir() {
     return;
   }
 
+  // Mevcut kayıtların boş alanlarını tamamla (isim vb.). Tek tek gider;
+  // biri hata verirse kalanlar denenmeye devam eder, sonunda rapor edilir.
+  let guncellenen = 0, guncelHata = "";
+  for (const t of tamamlanacak) {
+    btn.textContent = "Tamamlanıyor… " + (guncellenen + 1) + "/" + tamamlanacak.length;
+    const u = await sbAdminUpdate(t.id, t.alanlar);
+    if (u.error) { guncelHata = u.error; break; }
+    guncellenen++;
+  }
+  btn.textContent = eski;
+
   document.getElementById("impFile").value = "";
   document.getElementById("impMap").innerHTML = "";
   IMP_BASLIK = []; IMP_SATIR = []; IMP_ESLES = {};
-  window._IMP_YUKLENECEK = [];
+  window._IMP_YUKLENECEK = []; window._IMP_TAMAMLANACAK = [];
   btn.disabled = true; btn.textContent = "Önce dosya seçin";
 
-  box.innerHTML = '<p class="save-ok">✓ ' + res.eklenen +
-    ' lead eklendi. Aşağıdaki listede görünüyorlar.</p>';
+  box.innerHTML =
+    (guncelHata ? '<p class="form-err">Güncelleme hatası: ' + escapeHtml(guncelHata) + '</p>' : "") +
+    '<p class="save-ok">✓ ' + res.eklenen + ' lead eklendi' +
+    (guncellenen ? ', ' + guncellenen + ' kaydın eksik bilgileri tamamlandı' : "") +
+    '. Aşağıdaki listede görünüyorlar.</p>';
   await renderAll();
 }
 
