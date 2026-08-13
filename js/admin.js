@@ -90,6 +90,16 @@ function groupOpt(secili) {
   return h;
 }
 
+/* Bir metin Çin'den ürün getirme talebinden mi söz ediyor?
+   Kampanya adı ("TR_Cinden_Urun_Getirme"), grup sütunu ve serbest metin ürün
+   cevabı için ortak ölçüt — import.js de bunu kullanır.
+   Sözcük sınırına bakılır: düz "cin" araması "ürün cinsi" gibi masum
+   başlıkları da Çin sanıyordu. */
+function cinMetniMi(metin) {
+  const s = String(metin || "").toLocaleLowerCase("tr").replace(/[_\-.]+/g, " ");
+  return /(^|[^a-zçğıöşü])(çin|cin|china)(den|dan|de|da|li|lı|e|i)?([^a-zçğıöşü]|$)/.test(s);
+}
+
 /* Lead'in ürün grubunu döndürür.
    group_type boşsa (çoğu Meta/CSV içe aktarması böyle) seçilen ürünlerden
    tahmin edilir: "Karides" → deniz, "Brokoli" → sebze… Birden fazla farklı
@@ -99,6 +109,11 @@ function leadGroupOf(l) {
   if (GROUP_KEYS.includes(g)) return g;
 
   const urunler = l.products || [];
+  // Damgası eksik kalmış Çin leadleri kendiliğinden yerine otursun: ürün cevabında
+  // ya da grup alanında "Çin'den …" geçiyorsa bu bir Çin talebidir. Dondurulmuş
+  // gıda tahmininden ÖNCE bakılır (ayrı hizmet, ürün listesiyle ilgisi yok).
+  if (cinMetniMi(l.group) || cinMetniMi(urunler.join(" "))) return "cin";
+
   if (urunler.length && typeof PRODUCTS !== "undefined" && typeof normalizeTR === "function") {
     const bulunan = new Set();
     urunler.forEach(u => {
@@ -328,7 +343,7 @@ function renderTable(leads) {
       ${SELECTED.has(leadKey(l)) ? "checked" : ""} aria-label="Bu lead'i seç"></td>
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td data-label="Grup">${groupCell(l)}</td>
-    <td data-label="Firma">${escapeHtml(l.company)}</td>
+    <td data-label="Firma">${firmaCell(l)}</td>
     <td data-label="Tonaj">${escapeHtml(l.tonnage)}</td>
     <td data-label="Sınıf"><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(klassShort(l.klass))}</span></td>
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
@@ -795,6 +810,17 @@ function followCell(s) {
   if (s < t)  return '<span class="due-late">'+shown+' • gecikti</span>';
   return shown;
 }
+/* Tablodaki "Firma" hücresi: altında müşterinin yazdığı ürün(ler).
+   Çin formundaki cevap serbest metin ve uzun olabiliyor; hücre tek satıra
+   kısaltır, tamamı fareyle üzerine gelince ve müşteri kartında görünür. */
+function firmaCell(l) {
+  const ad = '<span class="ad">' + escapeHtml(l.company) + "</span>";
+  const urun = (l.products || []).join(", ");
+  if (!urun) return '<span class="firma-cell">' + ad + "</span>";
+  return '<span class="firma-cell">' + ad +
+    '<span class="urun" title="' + escapeHtml(urun) + '">' + escapeHtml(urun) + "</span></span>";
+}
+
 // Tablodaki "Grup" hücresi
 function groupCell(l) {
   const g = leadGroupOf(l);

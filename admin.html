@@ -122,6 +122,12 @@
     .grp-hepsi    { background:#ece9f7; color:#5b4fa0; }
     .grp-cin      { background:#ffe0d9; color:#b3341c; }
     .grp-yok      { background:transparent; color:var(--muted); font-weight:400; }
+    /* Firma hücresi: firma adı + altında müşterinin yazdığı ürün(ler).
+       Serbest metin cevaplar uzun olabildiği için tek satıra kısaltılır. */
+    .firma-cell { display:inline-block; max-width:300px; vertical-align:top; }
+    .firma-cell .ad { font-weight:600; }
+    .firma-cell .urun { display:block; font-size:.76rem; color:var(--muted);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .due-late { color:#c0392b; font-weight:700; }
     .due-today { color:var(--orange-dark); font-weight:700; }
     .due-none { color:var(--muted); }
@@ -134,6 +140,9 @@
       #leadTable td{display:flex;justify-content:space-between;align-items:center;gap:14px;border:none;padding:6px 0;white-space:normal;text-align:right}
       #leadTable td::before{content:attr(data-label);color:var(--muted);font-weight:700;font-size:.74rem;text-align:left;white-space:nowrap}
       #leadTable td:first-child{border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:2px}
+      /* Kart görünümünde satır dar: ürün cevabı kısaltılmak yerine alta sarsın */
+      .firma-cell{max-width:64%}
+      .firma-cell .urun{white-space:normal}
     }
     .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:6px; }
     .edit-grid .field { display:flex; flex-direction:column; }
@@ -264,7 +273,7 @@
       <p class="row-hint">Meta Ads Manager'dan indirdiğiniz lead dosyasını seçin (.csv veya .xlsx).
         Sütunlar otomatik eşleştirilir; yanlışsa aşağıdan elle düzeltebilirsiniz. Eklemeden önce önizleme gösterilir.</p>
       <input type="file" id="impFile" accept=".csv,.xlsx,.xls" class="text-input">
-      <label class="field-label" for="impGroup" style="margin-top:14px">Bu dosyadaki leadler hangi hizmete ait?</label>
+      <label class="field-label" for="impGroup" style="margin-top:14px">Bu dosyadaki leadler hangi hizmete ait? <span class="muted" style="font-weight:400">(dosyadan otomatik bulunur)</span></label>
       <select id="impGroup" class="text-input"></select>
       <p class="row-hint" id="impGroupHint" style="margin-top:7px"></p>
       <div id="impMap" class="imp-map"></div>
@@ -340,7 +349,7 @@
   <script src="js/scoring.js?v=31"></script>
   <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
   <script src="js/products.js?v=49"></script>
-  <script src="js/import.js?v=7"></script>
-  <script src="js/admin.js?v=50"></script>
+  <script src="js/import.js?v=8"></script>
+  <script src="js/admin.js?v=51"></script>
 </body>
 </html>

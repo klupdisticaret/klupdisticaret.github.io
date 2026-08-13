@@ -11,6 +11,9 @@ const IMP_ALANLAR = [
   { key: "company",    ad: "Şirket adı",   ipuclari: ["company name", "company", "şirket adı", "şirket", "firma adı", "firma", "kurum", "işletme"] },
   { key: "contact",    ad: "Yetkili kişi", ipuclari: ["full name", "ad soyad", "adı soyadı", "adınız", "isim", "yetkili kişi", "yetkili", "iletişim kişisi", "kişi adı", "name", "ad", "adı"] },
   { key: "group",      ad: "Ürün grubu",   ipuclari: ["ürün grubu", "grubunu", "grubu", "grup", "group", "kategori", "ürün tipi"] },
+  // Serbest metin ürün cevabı ("Çin'den hangi ürünü getirmek istiyorsunuz?").
+  // "Ürün grubu"ndan SONRA gelir: ipuçları çakışırsa grup sütunu önceliklidir.
+  { key: "products",   ad: "Ürünler",      ipuclari: ["hangi ürün", "ürünler", "ürün", "product", "products", "talep ettiğiniz", "getirmek istediğiniz"] },
   { key: "phone",      ad: "Telefon",      ipuclari: ["phone number", "phone", "telefon", "gsm", "cep", "tel", "numara"] },
   { key: "email",      ad: "E-posta",      ipuclari: ["email", "e posta", "eposta", "e mail", "mail"] },
   { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "şehr", "il", "location", "konum", "bulunduğunuz"] },
@@ -28,23 +31,31 @@ let IMP_ESLES  = {};   // { hedefAlan: sütunIndeksi }
 
 /* --- Kampanya (hizmet) damgası ---
    Meta dosyalarında çoğu zaman "ürün grubu" sütunu hiç gelmez; o leadler panele
-   "Belirtilmemiş" düşer ve hangi kampanyadan geldikleri kaybolur. Buradan seçilen
-   hizmet dosyadaki TÜM satırlara uygulanır (dosyada grup sütunu olsa bile seçim
-   önceliklidir). Her dosya sonrası sıfırlanır — bir sonraki dosya yanlış
-   damgalanmasın diye. */
+   "Belirtilmemiş" düşer ve hangi kampanyadan geldikleri kaybolur. Buradaki hizmet
+   dosyadaki TÜM satırlara uygulanır (dosyada grup sütunu olsa bile önceliklidir).
+
+   Değer ELLE seçilmez: dosya okununca kampanya adından tanınır (impKampanyaTani).
+   Aşağıdaki kutu yalnızca algılama yanlışsa düzeltmek içindir.
+     ""        -> henüz belli değil; içe aktarma başlamaz
+     "__dosya" -> grup her satırda dosyadaki sütundan okunsun
+     "cin" ...  -> tüm satırlar bu hizmete damgalansın
+   Her dosya sonrası sıfırlanır — bir sonraki dosya yanlış damgalanmasın diye. */
 let IMP_SABIT_GRUP = "";
+let IMP_ALGI_GEREKCE = "";   // hizmet nasıl bulundu (kullanıcıya gösterilir)
 
 // Grup listesi admin.js'te (GROUP_FILTERS). Bu dosya ondan ÖNCE yüklendiği için
 // seçici, admin.js'in en altındaki kurulum satırından çağrılır.
 function impGrupSeciciKur() {
   const s = document.getElementById("impGroup");
   if (!s || typeof GROUP_FILTERS === "undefined") return;
-  s.innerHTML = '<option value="">— Dosyadan oku (varsayılan) —</option>' +
+  s.innerHTML = '<option value="">— Seçilmedi —</option>' +
+    '<option value="__dosya">Dosyadaki sütundan oku</option>' +
     GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok")
       .map(g => `<option value="${g.key}">${escapeHtml(g.label)}</option>`).join("");
   s.value = IMP_SABIT_GRUP;
   s.addEventListener("change", e => {
     IMP_SABIT_GRUP = e.target.value;
+    IMP_ALGI_GEREKCE = "";               // elle değiştirildi; algılama gerekçesi düşer
     impGrupIpucu();
     if (IMP_SATIR.length) impOnizle();   // önizleme açıksa grup sütunu hemen güncellensin
   });
@@ -58,12 +69,54 @@ function impGrupAdi(key) {
   return g ? g.label.replace(/^[^A-Za-zÇĞİÖŞÜçğıöşü]+/, "").trim() : key;
 }
 
+// Dosyanın tamamına uygulanan sabit bir hizmet var mı? ("__dosya" sabit değildir)
+const impSabitGrupVar = () => !!IMP_SABIT_GRUP && IMP_SABIT_GRUP !== "__dosya";
+
 function impGrupIpucu() {
   const p = document.getElementById("impGroupHint");
   if (!p) return;
-  p.innerHTML = IMP_SABIT_GRUP
-    ? "Dosyadaki <b>tüm</b> leadler <b>" + escapeHtml(impGrupAdi(IMP_SABIT_GRUP)) + "</b> hizmetine işaretlenir."
-    : "Boş bırakırsanız grup dosyadaki sütundan okunur; sütun yoksa lead <b>Belirtilmemiş</b> kalır.";
+  if (impSabitGrupVar()) {
+    p.innerHTML = "Dosyadaki <b>tüm</b> leadler <b>" + escapeHtml(impGrupAdi(IMP_SABIT_GRUP)) + "</b> hizmetine işaretlenir." +
+      (IMP_ALGI_GEREKCE ? ' <span class="muted">(' + escapeHtml(IMP_ALGI_GEREKCE) + ")</span>" : "");
+  } else if (IMP_SABIT_GRUP === "__dosya") {
+    p.innerHTML = "Grup her satırda dosyadaki sütundan okunur; sütun yoksa lead <b>Belirtilmemiş</b> kalır.";
+  } else {
+    p.innerHTML = "Dosya seçilince kampanya adından otomatik bulunur. Bulunamazsa buradan seçmeniz gerekir — " +
+      "leadler sessizce <b>Belirtilmemiş</b> kaydedilmesin diye.";
+  }
+}
+
+/* --- Hizmeti dosyadan tanı ---
+   Meta dosyasında reklam/kampanya/form adı sütunları hep bulunur ve dosyanın
+   hangi kampanyaya ait olduğunu söyler ("TR_Cinden_Urun_Getirme_LeadGen").
+   Bu sütunlar alan eşleştirmesinde yok sayılır (bkz. IMP_YOKSAY: "ad_name"
+   başlığı "Yetkili kişi" alanına reklam adını yazdırıyordu) ama hizmeti
+   okumak için elverişliler.
+   Kampanya adı bir şey söylemezse ürün cevaplarına bakılır: satırların çoğunda
+   "Çin'den …" geçiyorsa dosya Çin kampanyasıdır.
+   Dönüş: { grup, gerekce } veya null. */
+const IMP_KAMPANYA_SUTUN = ["campaign name", "adset name", "ad name", "form name", "kampanya", "reklam", "form adi"];
+
+function impKampanyaTani() {
+  // 1) Kampanya / reklam / form adı sütunları
+  for (let i = 0; i < IMP_BASLIK.length; i++) {
+    const bas = impNorm(IMP_BASLIK[i]);
+    if (!IMP_KAMPANYA_SUTUN.includes(bas)) continue;
+    for (const satir of IMP_SATIR) {
+      const g = impGrupEsle(satir[i]);
+      if (g) return { grup: g, gerekce: IMP_BASLIK[i] + ": " + String(satir[i]).trim() };
+    }
+  }
+  // 2) Ürün cevapları — satırların yarıdan fazlası tek bir hizmete işaret ediyorsa
+  const u = IMP_ESLES.products;
+  if (u != null && IMP_SATIR.length) {
+    const sayac = {};
+    IMP_SATIR.forEach(s => { const g = impGrupEsle(s[u]); if (g) sayac[g] = (sayac[g] || 0) + 1; });
+    const en = Object.entries(sayac).sort((a, b) => b[1] - a[1])[0];
+    if (en && en[1] > IMP_SATIR.length / 2)
+      return { grup: en[0], gerekce: IMP_SATIR.length + " satırın " + en[1] + "'inde ürün cevabı bu hizmete işaret ediyor" };
+  }
+  return null;
 }
 
 /* --- CSV çözümleyici (tırnak, gömülü virgül, CRLF, BOM) --- */
@@ -149,13 +202,25 @@ function impGrupEsle(ham) {
   if (!ham) return "";
   const s = String(ham).toLocaleLowerCase("tr");
   // Çin kampanyası ayrı bir hizmet; dondurulmuş gıda gruplarından ÖNCE bakılır.
-  if (/çin|çın|cin|china/.test(s))                     return "cin";
+  // (cinMetniMi admin.js'te; bu dosya panelde onunla birlikte yüklenir.)
+  if (typeof cinMetniMi === "function" && cinMetniMi(s)) return "cin";
   if (/hepsi|tümü|tumu|birden_?fazla|hepsini/.test(s)) return "hepsi";
   if (/bakliyat|fasulye|mercimek|nohut/.test(s))       return "bakliyat";
   if (/deniz|balık|balik|su_?ürün|su_?urun/.test(s))   return "deniz";
   if (/sebze/.test(s))                                 return "sebze";
   if (/meyve/.test(s))                                 return "meyve";
   return "";
+}
+
+/* Ürün cevabı SERBEST METİNDİR ("Çin'den paslanmaz çelik fritöz getirmek
+   istiyorum"). Kısa bir liste ise ("Karides, kalamar") ayrı ürünlere bölünür;
+   uzun bir cümleyi virgülden bölmek anlamı parçalayacağı için tek parça kalır. */
+function impUrunEsle(ham) {
+  const s = String(ham || "").trim();
+  if (!s) return [];
+  const parca = s.split(/[,;\n•|]+/).map(x => x.trim()).filter(Boolean);
+  if (parca.length > 1 && parca.length <= 6 && parca.every(p => p.length <= 40)) return parca;
+  return [s];
 }
 
 /* Telefon: Meta "p:+905321234567" gibi verebilir.
@@ -315,15 +380,22 @@ function impSatirdanLead(satir) {
   // gibi gelir; olduğu gibi kaydedilirse panelde öyle görünür ve WhatsApp
   // bağlantısı çalışmaz. Site formundan gelen leadlerle de aynı biçim olur.
   const tel = impTelefonNorm(al("phone"));
+  const urunler = impUrunEsle(al("products"));
+
+  // Grup sırası: dosyaya damgalanan hizmet > dosyadaki grup sütunu > ürün cevabı.
+  // Sonuncusu, kampanya adı tanınmayan karışık dosyalarda Çin taleplerinin
+  // "Belirtilmemiş" düşmesini engeller.
+  const grup = impSabitGrupVar() ? IMP_SABIT_GRUP
+             : (impGrupEsle(al("group")) || impGrupEsle(urunler.join(" ")));
 
   const state = {
     company: al("company"), contact: al("contact"), phone: tel,
     whatsapp: tel, email: al("email"),
     location: al("location"), port: al("port"),
-    group: IMP_SABIT_GRUP || impGrupEsle(al("group")),
+    group: grup,
     tonnage: tonaj, budget: butce,
     timing: al("timing"), experience: al("experience"),
-    products: [],
+    products: urunler,
   };
   const c = (typeof classifyLead === "function") ? classifyLead(state) : {};
   return {
@@ -361,6 +433,10 @@ function impEksikleri(dosyaLead, kayit) {
     const eski = String(kayit[anahtar] || "").trim();
     if (yeniDeger && !eski) alanlar[kolon] = yeniDeger;
   });
+  // Ürünler dizi olduğu için ayrı ele alınır. Damgasız/ürünsüz aktarılmış eski
+  // kayıtlar, aynı dosya yeniden yüklendiğinde ürünlerine kavuşsun diye.
+  if ((dosyaLead.products || []).length && !(kayit.products || []).length)
+    alanlar.products = dosyaLead.products;
   return alanlar;
 }
 
@@ -410,6 +486,13 @@ function impOnizle() {
     '<div class="fn-kpi"><b style="color:#c0392b">' + (cift + telsiz - tamamlanacak.length) + '</b><span>atlanacak</span></div>' +
     '</div>';
 
+  if (impSabitGrupVar())
+    h += '<p class="save-ok">🏷️ Bu dosyanın tamamı <b>' + escapeHtml(impGrupAdi(IMP_SABIT_GRUP)) + '</b> hizmetine işaretlenecek' +
+      (IMP_ALGI_GEREKCE ? " — kampanya dosyadan tanındı" : "") + '.</p>';
+  else if (!IMP_SABIT_GRUP)
+    h += '<p class="form-err">⚠️ Bu dosyanın hangi hizmete ait olduğu <b>anlaşılamadı</b>. Yukarıdaki <b>hizmet</b> kutusundan seçin; ' +
+      'seçmeden içe aktarma başlamaz (leadler "Belirtilmemiş" düşmesin diye).</p>';
+
   if (IMP_ESLES.contact == null)
     h += '<p class="form-err">⚠️ <b>Yetkili kişi</b> sütunu eşleşmedi — bu hâlde leadler <b>isimsiz</b> aktarılır. Yukarıdaki eşleştirmeden ad/soyad sütununu seçin.</p>';
   if (tamamlanacak.length)
@@ -421,12 +504,13 @@ function impOnizle() {
   const gost = yeni.slice(0, 12);
   if (gost.length) {
     h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
-      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Tonaj</th><th>Bütçe</th><th>Sınıf</th></tr></thead><tbody>' +
+      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Ürün</th><th>Tonaj</th><th>Bütçe</th><th>Sınıf</th></tr></thead><tbody>' +
       gost.map(l => '<tr>' +
         '<td>' + escapeHtml(l.company || "—") + '</td>' +
         '<td>' + escapeHtml(l.contact || "—") + '</td>' +
         '<td>' + escapeHtml(l.phone || "—") + '</td>' +
         '<td>' + escapeHtml(l.group || "—") + '</td>' +
+        '<td>' + escapeHtml((l.products || []).join(", ") || "—") + '</td>' +
         '<td>' + (l._tonajTanindi ? escapeHtml(l.tonnage || "—") : '⚠️ ' + escapeHtml(l._tonajHam)) + '</td>' +
         '<td>' + (l._butceTanindi ? escapeHtml(l.budget || "—") : '⚠️ ' + escapeHtml(l._butceHam)) + '</td>' +
         '<td>' + escapeHtml(l.klass || "—") + '</td>' +
@@ -448,6 +532,12 @@ function impOnizle() {
 
   box.innerHTML = h;
   if (btn) {
+    // Hizmet belli değilse içe aktarma başlamaz: bu, leadlerin damgasız
+    // kaydedilip panelde "Belirtilmemiş" yığınına düşmesinin tek sebebiydi.
+    if (!IMP_SABIT_GRUP) {
+      btn.disabled = true; btn.textContent = "Önce hizmet seçin";
+      return;
+    }
     btn.disabled = yeni.length === 0 && tamamlanacak.length === 0;
     if (yeni.length && tamamlanacak.length)
       btn.textContent = "⬆️ " + yeni.length + " lead ekle + " + tamamlanacak.length + " kaydı tamamla";
@@ -484,14 +574,14 @@ async function impCalistir() {
       email: l.email, location: l.location, port: l.port,
       group_type: l.group,
       tonnage: l.tonnage, budget: l.budget, timing: l.timing, experience: l.experience,
-      products: [], score: l.score, klass: l.klass, lead_group: l.leadGroup,
+      products: l.products || [], score: l.score, klass: l.klass, lead_group: l.leadGroup,
       wa_shown: l.showWhatsapp, meeting_shown: l.showMeeting,
       // Kolon adı "status" (lead_status DEĞİL): admin.js yeni CRM alanlarını
       // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
       // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.
       status: "Yeni lead",
       // Hangi kampanyadan geldiği kayıtta kalsın
-      notes: "Meta reklamından içe aktarıldı" + (IMP_SABIT_GRUP ? " — " + impGrupAdi(IMP_SABIT_GRUP) : ""),
+      notes: "Meta reklamından içe aktarıldı" + (impSabitGrupVar() ? " — " + impGrupAdi(IMP_SABIT_GRUP) : ""),
     };
     const t = Date.parse(l.createdAt);
     if (!isNaN(t)) r.created_at = new Date(t).toISOString();
@@ -524,8 +614,9 @@ async function impCalistir() {
   document.getElementById("impFile").value = "";
   document.getElementById("impMap").innerHTML = "";
   IMP_BASLIK = []; IMP_SATIR = []; IMP_ESLES = {};
-  // Hizmet seçimi de sıfırlanır: sıradaki dosya sessizce aynı kampanyaya damgalanmasın.
-  IMP_SABIT_GRUP = "";
+  // Hizmet damgası da sıfırlanır: sıradaki dosya, kendi kampanyası tanınmadan
+  // sessizce bu dosyanın hizmetine yazılmasın.
+  IMP_SABIT_GRUP = ""; IMP_ALGI_GEREKCE = "";
   const gs = document.getElementById("impGroup");
   if (gs) { gs.value = ""; impGrupIpucu(); }
   window._IMP_YUKLENECEK = []; window._IMP_TAMAMLANACAK = [];
@@ -552,6 +643,15 @@ async function impDosyaSecildi(e) {
     IMP_SATIR  = satirlar.slice(1);
     impOtoEslestir();
     impEslesCiz();
+
+    // Hizmeti dosyanın kendisinden bul; kutu elle doldurulmasın diye.
+    const algi = impKampanyaTani();
+    IMP_SABIT_GRUP   = algi ? algi.grup : "";
+    IMP_ALGI_GEREKCE = algi ? algi.gerekce : "";
+    const gs = document.getElementById("impGroup");
+    if (gs) gs.value = IMP_SABIT_GRUP;
+    impGrupIpucu();
+
     impOnizle();
   } catch (err) {
     box.innerHTML = '<p class="form-err">Dosya okunamadı: ' + escapeHtml(String(err.message || err)) + '</p>';
