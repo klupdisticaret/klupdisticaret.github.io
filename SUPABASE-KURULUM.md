@@ -40,6 +40,12 @@ alter table public.leads add column if not exists wa_shown boolean;    -- WhatsA
 alter table public.leads add column if not exists meeting_shown boolean; -- Toplantı gösterildi mi
 alter table public.leads add column if not exists next_followup text;   -- Sonraki takip tarihi
 
+-- Çin'den Ürün Getirme: ücretli hizmet sorusunun cevabı.
+-- Bu hizmette tonaj sorulmadığı için lead sınıfını (VIP / Sıcak / Düşük) bu cevap belirler.
+-- Kolon açılmazsa sınıf yine doğru çalışır (klass/score kolonlarına yazılır);
+-- yalnızca müşterinin verdiği CEVAP METNİ saklanamaz.
+alter table public.leads add column if not exists cin_paid text;
+
 -- Güvenlik (Row Level Security) açık
 alter table public.leads enable row level security;
 

@@ -120,6 +120,17 @@ async function sbDeleteAvailability(date) {
   } catch (e) { return { error: String(e) }; }
 }
 
+/* Kurulum SQL'i güncellenmeden de çalışsın diye: bu kolonlar tabloda yoksa
+   istek PGRST204 ile TÜM işlemi düşürür. Hata görülünce bunlar atılıp
+   yeniden denenir; kayıt gider, yalnızca yeni alan boş kalır. */
+const SB_YENI_KOLONLAR = ["cin_paid"];
+const sbKolonHatasi = (msg) => /column|schema cache|PGRST204/i.test(String(msg || ""));
+function sbKolonlariAt(obj) {
+  const kopya = { ...obj };
+  SB_YENI_KOLONLAR.forEach(k => delete kopya[k]);
+  return kopya;
+}
+
 // ADMIN: birden fazla lead ekler (CSV/Excel içe aktarma).
 // 50'lik gruplar hâlinde gider. Dönüş: { eklenen, error }.
 async function sbAdminInsertMany(rows) {
@@ -135,8 +146,13 @@ async function sbAdminInsertMany(rows) {
   let eklenen = 0;
   try {
     for (let i = 0; i < rows.length; i += 50) {
-      const grup = rows.slice(i, i + 50);
-      const { data, error } = await sb.from("leads").insert(grup).select("id");
+      let grup = rows.slice(i, i + 50);
+      let { data, error } = await sb.from("leads").insert(grup).select("id");
+      if (error && sbKolonHatasi(error.message)) {
+        // Yeni kolon henüz açılmamış: onsuz tekrar dene ki içe aktarma durmasın.
+        grup = grup.map(sbKolonlariAt);
+        ({ data, error } = await sb.from("leads").insert(grup).select("id"));
+      }
       if (error) return { eklenen, error: error.message };
       // Hata yoksa satırlar yazılmıştır; data boş dönse bile grup sayılır.
       eklenen += (data && data.length) ? data.length : grup.length;
@@ -165,7 +181,13 @@ async function sbFunnelEvents(gun = 30) {
 async function sbAdminUpdate(id, fields) {
   if (!sb) return { error: "Supabase yok" };
   try {
-    const { error } = await sb.from("leads").update(fields).eq("id", id);
+    let { error } = await sb.from("leads").update(fields).eq("id", id);
+    if (error && sbKolonHatasi(error.message)) {
+      const kalan = sbKolonlariAt(fields);
+      // Geriye alan kalmadıysa hatayı olduğu gibi bildir (boş update anlamsız).
+      if (Object.keys(kalan).length && Object.keys(kalan).length < Object.keys(fields).length)
+        ({ error } = await sb.from("leads").update(kalan).eq("id", id));
+    }
     return { error: error ? error.message : null };
   } catch (e) { return { error: String(e) }; }
 }

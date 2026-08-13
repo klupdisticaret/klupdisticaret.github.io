@@ -172,6 +172,8 @@ function rowToLead(r) {
     followUpDate: r.next_followup || "",
     closeReason: r.close_reason || "",
     adminNote: r.notes || "",
+    // Çin hizmetindeki ücret sorusunun cevabı (kolon yoksa boş — panel bozulmaz)
+    cinPaid: r.cin_paid || "",
   };
 }
 function localLeads() {
@@ -180,6 +182,7 @@ function localLeads() {
       Object.assign({ status: "Yeni lead", notes: "", nextFollowup: "",
         leadStatus: "İncelenecek", callResult: "Seçilmedi", nextAction: "Seçilmedi",
         followUpDate: l.nextFollowup || "", closeReason: "", adminNote: l.notes || "",
+        cinPaid: l.cinPaid || "",
         leadGroup: l.leadGroup, waShown: l.showWhatsapp, meetingShown: l.showMeeting },
         l, { status: normStatus(l.status) }));
   } catch (e) { return []; }
@@ -345,7 +348,7 @@ function renderTable(leads) {
     <td data-label="Grup">${groupCell(l)}</td>
     <td data-label="Firma">${firmaCell(l)}</td>
     <td data-label="Tonaj">${escapeHtml(l.tonnage)}</td>
-    <td data-label="Sınıf"><span class="lead-badge lead-${cssClass(l.klass)}">${escapeHtml(klassShort(l.klass))}</span></td>
+    <td data-label="Sınıf">${klassCell(l)}</td>
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
     <td data-label="Telefon">${escapeHtml(l.phone)}</td>
@@ -467,6 +470,20 @@ function openCard(lead) {
   const yn = (v) => v ? "Evet" : "Hayır";
   const opt = (list, sel) => list.map(o => `<option${o === sel ? " selected" : ""}>${escapeHtml(o)}</option>`).join("");
 
+  /* Çin hizmetinde tonaj sorulmaz; sınıfı ücret sorusunun cevabı belirler.
+     Kartta hem müşterinin verdiği ham cevap, hem de görüşmeden sonra
+     değiştirilebilsin diye açılır liste gösterilir. */
+  const cinLead = leadGroupOf(lead) === "cin";
+  const cinKey  = typeof cinPaidKey === "function" ? cinPaidKey(lead.cinPaid) : "";
+  const cinAlan = !cinLead ? "" : `
+      <div class="field full"><label class="field-label">Ücretli hizmet cevabı
+        <span style="font-weight:400;text-transform:none">(sınıfı bu belirler)</span></label>
+        <select id="stCin" class="text-input">
+          <option value=""${cinKey ? "" : " selected"}>— Cevap yok / bilinmiyor —</option>
+          ${(typeof CIN_PAID_ANSWERS !== "undefined" ? CIN_PAID_ANSWERS : []).map(a =>
+            `<option value="${a.key}"${a.key === cinKey ? " selected" : ""}>${escapeHtml(a.label)}</option>`).join("")}
+        </select></div>`;
+
   document.getElementById("cardBody").innerHTML = `
     <div class="kv">
       ${kv("Ad soyad (yetkili)", lead.contact)}
@@ -476,10 +493,10 @@ function openCard(lead) {
       ${kv("Şehir", lead.location)}
       ${kv("Liman", lead.port)}
       ${kv("Girilen ürünler", (lead.products || []).join(", "))}
-      ${kv("Tonaj", lead.tonnage)}
-      ${kv("Bütçe", lead.budget)}
+      ${cinLead ? kv("Ücretli hizmet cevabı", lead.cinPaid) : kv("Tonaj", lead.tonnage)}
+      ${cinLead ? "" : kv("Bütçe", lead.budget)}
       ${kv("İthalat zamanı", lead.timing)}
-      ${kv("Daha önce ithalat?", lead.experience)}
+      ${cinLead ? "" : kv("Daha önce ithalat?", lead.experience)}
       ${kv("Lead grubu", lead.leadGroup)}
       ${kv("Lead etiketi", lead.klass)}
       ${kv("Lead puanı", lead.score == null ? "-" : String(lead.score))}
@@ -490,6 +507,7 @@ function openCard(lead) {
 
     <div class="edit-grid">
       <div class="field"><label class="field-label">Ürün grubu / Hizmet</label><select id="stGroup" class="text-input">${groupOpt(lead.group)}</select></div>
+      ${cinAlan}
       <div class="field"><label class="field-label">Lead durumu</label><select id="stSelect" class="text-input">${opt(STATUSES, lead.leadStatus)}</select></div>
       <div class="field"><label class="field-label">Arama sonucu</label><select id="stCall" class="text-input">${opt(CALL_RESULTS, lead.callResult)}</select></div>
       <div class="field"><label class="field-label">Sonraki aksiyon</label><select id="stNext" class="text-input">${opt(NEXT_ACTIONS, lead.nextAction)}</select></div>
@@ -524,7 +542,23 @@ async function saveCard(lead) {
   lead.closeReason  = document.getElementById("stClose").value;
   lead.adminNote    = document.getElementById("stNotes").value;
 
-  const refresh = () => { renderStatusDist(CACHE); renderStats(CACHE); renderFilters(); renderTable(getFiltered()); };
+  /* Ücret cevabı değiştiyse sınıf yeniden hesaplanır — rozet, "Sıcak + VIP"
+     sayacı ve sınıf dağılımı hep aynı alandan beslendiği için hepsi birlikte
+     yerine oturur.
+     leadGroupOf yukarıdaki lead.group ATANDIKTAN SONRA sorulur: hizmet aynı
+     kayıtta Çin'den başka bir gruba çevrildiyse Çin kuralı artık işlemez,
+     yoksa dondurulmuş gıda leadine ücret cevabından sınıf yazardık.
+     (Karttaki Çin alanı grup değişikliğinden sonra kart yeniden açılınca kaybolur.) */
+  const cinSec = document.getElementById("stCin");
+  let sinifDegisti = false;
+  if (cinSec && leadGroupOf(lead) === "cin" && typeof classifyLead === "function") {
+    lead.cinPaid = cinSec.value;
+    const c = classifyLead({ group: "cin", cinPaid: lead.cinPaid });
+    lead.klass = c.klass; lead.score = c.score; lead.leadGroup = c.group;
+    sinifDegisti = true;
+  }
+
+  const refresh = () => { renderStatusDist(CACHE); renderStats(CACHE); renderClassDist(CACHE); renderFilters(); renderTable(getFiltered()); };
 
   if (sb && lead.id != null) {
     msg.textContent = "Kaydediliyor…"; msg.className = "muted";
@@ -533,11 +567,19 @@ async function saveCard(lead) {
       lead_status: lead.leadStatus, call_result: lead.callResult, next_action: lead.nextAction,
       close_reason: lead.closeReason, next_followup: lead.followUpDate || null, notes: lead.adminNote,
     };
+    if (sinifDegisti) {
+      full.cin_paid = lead.cinPaid || null;
+      full.klass = lead.klass || null; full.score = lead.score; full.lead_group = lead.leadGroup;
+    }
     let res = await sbAdminUpdate(lead.id, full);
     if (res.error && /column|schema cache|PGRST204/i.test(res.error)) {
       // Yeni kolonlar henüz eklenmemiş -> mevcut kolonları kaydet (kalanlar bu oturumda görünür)
       // group_type eski kolonlardan biri; yedek kayıtta da gönderilir ki hizmet değişikliği kaybolmasın.
-      res = await sbAdminUpdate(lead.id, { group_type: lead.group || null, next_followup: lead.followUpDate || null, notes: lead.adminNote });
+      // klass/score/lead_group kurulumun ilk günden beri var olan kolonları: Çin
+      // leadinin sınıfı, cin_paid kolonu hiç açılmamış olsa bile kalıcı olsun diye.
+      const yedek = { group_type: lead.group || null, next_followup: lead.followUpDate || null, notes: lead.adminNote };
+      if (sinifDegisti) { yedek.klass = lead.klass || null; yedek.score = lead.score; yedek.lead_group = lead.leadGroup; }
+      res = await sbAdminUpdate(lead.id, yedek);
       if (!res.error) {
         msg.innerHTML = "✓ Kaydedildi. <b>Not:</b> Durum/aksiyon alanlarının kalıcı olması için Supabase'e yeni kolonları ekleyin (kurulum SQL'i).";
         msg.className = "save-ok"; refresh(); return;
@@ -556,6 +598,9 @@ async function saveCard(lead) {
           followUpDate: lead.followUpDate, closeReason: lead.closeReason, adminNote: lead.adminNote,
           notes: lead.adminNote, nextFollowup: lead.followUpDate,
         });
+        if (sinifDegisti) Object.assign(arr[i], {
+          cinPaid: lead.cinPaid, klass: lead.klass, score: lead.score, leadGroup: lead.leadGroup,
+        });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
       }
     } catch (e) {}
@@ -568,7 +613,7 @@ async function saveCard(lead) {
 function exportJSON() { download("leadler.json", JSON.stringify(CACHE, null, 2), "application/json"); }
 function exportCSV() {
   const cols = ["createdAt","refNo","company","contact","phone","whatsapp","location","port",
-                "group","products","tonnage","budget","timing","experience","leadGroup","klass","score",
+                "group","products","tonnage","budget","timing","experience","cinPaid","leadGroup","klass","score",
                 "selectedSlot","leadStatus","callResult","nextAction","followUpDate","closeReason","adminNote"];
   const rows = CACHE.map(l => cols.map(c => {
     let v = l[c];
@@ -826,6 +871,13 @@ function groupCell(l) {
   const g = leadGroupOf(l);
   if (g === "yok") return '<span class="grp-badge grp-yok">—</span>';
   return '<span class="grp-badge grp-'+g+'">'+escapeHtml(GROUP_SHORT[g] || g)+'</span>';
+}
+/* Tablodaki "Sınıf" hücresi. Sınıfı boş olan lead ROZETSİZ gösterilir:
+   düz rozet basılırsa "Düşük" renginde bir "-" çıkıyor ve cevabı bilinmeyen
+   Çin leadi, gerçekten "hayır" diyenle aynı görünüyordu. */
+function klassCell(l) {
+  if (!l.klass) return '<span class="due-none" title="Sınıflandırılmadı">—</span>';
+  return '<span class="lead-badge lead-' + cssClass(l.klass) + '">' + escapeHtml(klassShort(l.klass)) + "</span>";
 }
 function cssClass(klass) {
   return {

@@ -14,6 +14,12 @@ const IMP_ALANLAR = [
   // Serbest metin ürün cevabı ("Çin'den hangi ürünü getirmek istiyorsunuz?").
   // "Ürün grubu"ndan SONRA gelir: ipuçları çakışırsa grup sütunu önceliklidir.
   { key: "products",   ad: "Ürünler",      ipuclari: ["hangi ürün", "ürünler", "ürün", "product", "products", "talep ettiğiniz", "getirmek istediğiniz"] },
+  // Çin hizmetindeki ücret uyarısı sorusunun cevabı ("…Devam etmek ister misiniz?").
+  // Bu leadlerde tonaj sorulmadığı için sınıfı BU cevap belirler (scoring.js).
+  // Sütun başlığı sorunun tamamı olabiliyor; birden çok ipucu, başlık kısaltılmış
+  // gelse de tutsun diye. ("ücretli" ipucu "ücretsiz danışmanlık"a takılmaz.)
+  { key: "cinPaid",    ad: "Ücretli hizmet cevabı",
+    ipuclari: ["ücretli hizmet", "ücretlendirilir", "danışmanlık", "devam etmek", "hizmeti değerlendir"] },
   { key: "phone",      ad: "Telefon",      ipuclari: ["phone number", "phone", "telefon", "gsm", "cep", "tel", "numara"] },
   { key: "email",      ad: "E-posta",      ipuclari: ["email", "e posta", "eposta", "e mail", "mail"] },
   { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "şehr", "il", "location", "konum", "bulunduğunuz"] },
@@ -388,6 +394,8 @@ function impSatirdanLead(satir) {
   const grup = impSabitGrupVar() ? IMP_SABIT_GRUP
              : (impGrupEsle(al("group")) || impGrupEsle(urunler.join(" ")));
 
+  const cinPaidHam = al("cinPaid");
+
   const state = {
     company: al("company"), contact: al("contact"), phone: tel,
     whatsapp: tel, email: al("email"),
@@ -396,6 +404,7 @@ function impSatirdanLead(satir) {
     tonnage: tonaj, budget: butce,
     timing: al("timing"), experience: al("experience"),
     products: urunler,
+    cinPaid: cinPaidHam,
   };
   const c = (typeof classifyLead === "function") ? classifyLead(state) : {};
   return {
@@ -406,6 +415,9 @@ function impSatirdanLead(satir) {
     _tonajHam: tonajHam, _butceHam: butceHam,
     _tonajTanindi: !tonajHam || !!tonaj,
     _butceTanindi: !butceHam || !!butce,
+    // Çin leadinin cevabı okunabildi mi? (boş cevap uyarı sayılmaz)
+    _cinPaidTanindi: grup !== "cin" || !cinPaidHam ||
+      (typeof cinPaidKey === "function" && !!cinPaidKey(cinPaidHam)),
   };
 }
 
@@ -424,6 +436,7 @@ const IMP_TAMAMLANABILIR = [
   ["budget",     "budget"],
   ["timing",     "timing"],
   ["experience", "experience"],
+  ["cinPaid",    "cin_paid"],
 ];
 
 function impEksikleri(dosyaLead, kayit) {
@@ -437,6 +450,13 @@ function impEksikleri(dosyaLead, kayit) {
   // kayıtlar, aynı dosya yeniden yüklendiğinde ürünlerine kavuşsun diye.
   if ((dosyaLead.products || []).length && !(kayit.products || []).length)
     alanlar.products = dosyaLead.products;
+  // Ücret cevabı yeni geliyorsa sınıf da onunla birlikte tazelenir; aksi hâlde
+  // kayıt cevabına kavuşur ama "Düşük" damgasıyla asılı kalırdı.
+  if (alanlar.cin_paid && dosyaLead.klass) {
+    alanlar.klass = dosyaLead.klass;
+    alanlar.score = dosyaLead.score;
+    alanlar.lead_group = dosyaLead.leadGroup;
+  }
   return alanlar;
 }
 
@@ -475,6 +495,10 @@ function impOnizle() {
   const cift = leadler.filter(l => l._cift).length;
   const telsiz = leadler.filter(l => l._telefonYok).length;
   const taninmayan = yeni.filter(l => !l._tonajTanindi || !l._butceTanindi).length;
+  // Çin leadleri: sınıf ücret cevabından gelir, o yüzden ayrı uyarılır.
+  const cinler = yeni.filter(l => l.group === "cin");
+  const cinCevapsiz = cinler.filter(l => !l.cinPaid).length;
+  const cinAnlasilmaz = cinler.filter(l => !l._cinPaidTanindi).length;
 
   window._IMP_YUKLENECEK = yeni;
   window._IMP_TAMAMLANACAK = tamamlanacak;
@@ -501,10 +525,24 @@ function impOnizle() {
   if (telsiz) h += '<p class="row-hint">⚠️ ' + telsiz + ' satırda telefon yok — çift kontrolü yapılamadığı için atlanacak. Telefon sütununu doğru eşleştirdiğinizden emin olun.</p>';
   if (taninmayan) h += '<p class="fn-hint">⚠️ ' + taninmayan + ' satırda tonaj/bütçe cevabı tanınamadı. Bunlar yine eklenir ama <b>sınıflandırma boş kalır</b> (VIP/Sıcak hesaplanmaz). Aşağıdaki tabloda ⚠️ ile işaretli.</p>';
 
+  // Çin leadlerinde tonaj yok; sınıfı ücret sorusunun cevabı belirler.
+  if (cinler.length && IMP_ESLES.cinPaid == null)
+    h += '<p class="form-err">⚠️ <b>Ücretli hizmet cevabı</b> sütunu eşleşmedi — ' + cinler.length +
+      ' Çin leadi <b>sınıfsız</b> aktarılır (VIP/Sıcak/Düşük hesaplanmaz). Yukarıdaki eşleştirmeden ' +
+      '“Devam etmek ister misiniz?” sorusunun sütununu seçin.</p>';
+  else if (cinCevapsiz)
+    h += '<p class="fn-hint">⚠️ ' + cinCevapsiz + ' Çin leadinde ücret sorusu cevapsız — sınıfları boş kalır, müşteri kartından elle işaretleyebilirsiniz.</p>';
+  if (cinAnlasilmaz)
+    h += '<p class="fn-hint">⚠️ ' + cinAnlasilmaz + ' Çin leadinde cevap <b>anlaşılamadı</b> (aşağıdaki tabloda ⚠️ ile işaretli). Bunlar da sınıfsız aktarılır.</p>';
+
   const gost = yeni.slice(0, 12);
   if (gost.length) {
+    // "Ücret cevabı" sütunu yalnızca dosyada o soru varsa gösterilir —
+    // dondurulmuş gıda dosyalarında boş bir sütun yer kaplamasın.
+    const cinSutun = IMP_ESLES.cinPaid != null || cinler.length > 0;
     h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
-      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Ürün</th><th>Tonaj</th><th>Bütçe</th><th>Sınıf</th></tr></thead><tbody>' +
+      '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Ürün</th><th>Tonaj</th><th>Bütçe</th>' +
+      (cinSutun ? '<th>Ücret cevabı</th>' : "") + '<th>Sınıf</th></tr></thead><tbody>' +
       gost.map(l => '<tr>' +
         '<td>' + escapeHtml(l.company || "—") + '</td>' +
         '<td>' + escapeHtml(l.contact || "—") + '</td>' +
@@ -513,6 +551,7 @@ function impOnizle() {
         '<td>' + escapeHtml((l.products || []).join(", ") || "—") + '</td>' +
         '<td>' + (l._tonajTanindi ? escapeHtml(l.tonnage || "—") : '⚠️ ' + escapeHtml(l._tonajHam)) + '</td>' +
         '<td>' + (l._butceTanindi ? escapeHtml(l.budget || "—") : '⚠️ ' + escapeHtml(l._butceHam)) + '</td>' +
+        (cinSutun ? '<td>' + (l._cinPaidTanindi ? escapeHtml(l.cinPaid || "—") : '⚠️ ' + escapeHtml(l.cinPaid)) + '</td>' : "") +
         '<td>' + escapeHtml(l.klass || "—") + '</td>' +
       '</tr>').join("") + '</tbody></table></div>';
     if (yeni.length > gost.length)
@@ -576,6 +615,9 @@ async function impCalistir() {
       tonnage: l.tonnage, budget: l.budget, timing: l.timing, experience: l.experience,
       products: l.products || [], score: l.score, klass: l.klass, lead_group: l.leadGroup,
       wa_shown: l.showWhatsapp, meeting_shown: l.showMeeting,
+      // Çin hizmetindeki ücret sorusunun cevabı. Kolon henüz açılmamışsa
+      // sbAdminInsertMany bu alanı düşürüp tekrar dener (bkz. SB_YENI_KOLONLAR).
+      cin_paid: l.cinPaid || null,
       // Kolon adı "status" (lead_status DEĞİL): admin.js yeni CRM alanlarını
       // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
       // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.

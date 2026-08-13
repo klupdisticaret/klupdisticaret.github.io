@@ -32,6 +32,38 @@ const SCORE_MAP = {
   },
 };
 
+/* --- Çin'den Ürün Getirme: ücretli hizmet sorusu ---
+   Bu hizmette tonaj sorulmuyor; tonaj tablosuna düşünce TÜM Çin leadleri
+   "Düşük Öncelikli" görünüyordu. Sınıfı, ücret uyarısından sonraki
+   "Devam etmek ister misiniz?" cevabı belirler. */
+const CIN_PAID_ANSWERS = [
+  { key: "evet",  klass: "VIP Lead",              letter: "D", score: 90,
+    label: "Evet — ücretli hizmeti değerlendirir" },
+  { key: "detay", klass: "Sıcak Lead",            letter: "C", score: 60,
+    label: "Detayları görüştükten sonra karar verecek" },
+  { key: "hayir", klass: "Düşük Öncelikli Lead",  letter: "A", score: 15,
+    label: "Hayır — şu an ücretli hizmet düşünmüyor" },
+];
+const cinPaidInfo = (key) => CIN_PAID_ANSWERS.find(a => a.key === key) || null;
+
+/* Serbest metin cevabı üç şıktan birine indirger.
+   Meta cevabı "evet_ucretli_hizmeti_degerlendirmek_istiyorum" biçiminde de
+   gelebildiği için noktalama ve Türkçe harfler sadeleştirilip anahtar
+   kelimeye bakılır. SIRA ÖNEMLİ: "hayır" önce elenir, yoksa
+   "…düşünmüyorum" cevabındaki kelimeler yanlış kutuya düşebilir. */
+function cinPaidKey(ham) {
+  const s = String(ham || "").toLocaleLowerCase("tr")
+    .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  if (!s) return "";
+  if (CIN_PAID_ANSWERS.some(a => a.key === s)) return s;  // kartta elle seçilen değer
+  if (/\bhayir\b|dusunmuyor/.test(s)) return "hayir";
+  if (/\bevet\b|degerlendir/.test(s)) return "evet";
+  if (/detay|gorus|karar/.test(s))    return "detay";
+  return "";
+}
+
 const has = (v) => !!(v && String(v).trim().length);
 function hasFirma(s)   { return has(s.company); }
 function hasContact(s) { return has(s.phone) || has(s.whatsapp); } // WhatsApp butonu için
@@ -55,12 +87,34 @@ const VISIBILITY = {
   "25 ton üzeri": { "10.000 USD altı": 0, "10.000 – 25.000 USD": 1, "25.000 – 50.000 USD": 2, "50.000 USD üzeri": 2 },
 };
 
+/* Çin hizmeti: sınıf ücretli hizmet cevabından gelir.
+   Cevap yoksa sınıf BOŞ bırakılır — tonaj tablosunun varsayılanına düşerse
+   ücret sorusu eklenmeden önce gelen eski leadler, gerçekten "hayır" diyenlerle
+   aynı görünüyordu. WhatsApp/toplantı bayrakları kapalı: bu leadler siteyi
+   hiç görmüyor, Meta reklamından geliyor. */
+function classifyCin(state) {
+  const info = cinPaidInfo(cinPaidKey(state.cinPaid));
+  return {
+    klass: info ? info.klass : "",
+    group: info ? info.letter : null,
+    label: info ? info.klass : "",
+    score: info ? info.score : 0,
+    level: 0,
+    showWhatsapp: false,
+    showMeeting: false,
+    message: GROUP_MESSAGES.A,
+  };
+}
+
 /* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
    Görünürlük, tonaj x bütçe matrisine (VISIBILITY) göre hücre-hücre belirlenir;
    "ne zaman" ve "daha önce" sorularının TÜM seçenekleri geçerlidir (engellemez).
    Seviye 0 -> sadece kayıt | 1 -> WhatsApp | 2 -> WhatsApp + toplantı
-   { klass, group, label, score, level, showWhatsapp, showMeeting, message } */
+   { klass, group, label, score, level, showWhatsapp, showMeeting, message }
+   Çin hizmeti bu matrisin dışındadır (bkz. classifyCin). */
 function classifyLead(state) {
+  if (String(state.group || "") === "cin") return classifyCin(state);
+
   const g = TONNAGE_GROUP[state.tonnage] || TONNAGE_GROUP["1–5 ton"];
   const score = scoreLead(state);
 
