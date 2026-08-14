@@ -339,19 +339,20 @@ function renderTable(leads) {
   }
   const head = `<tr>
     <th class="c-sel"><input type="checkbox" id="selAll" title="Görünen tümünü seç" aria-label="Görünen tümünü seç"></th>
-    <th>Tarih</th><th>Grup</th><th>Firma</th><th>Tonaj / Ücret cevabı</th><th>Sınıf</th>
-    <th>Durum</th><th>Sonraki takip</th><th>Telefon</th><th>Sil</th></tr>`;
+    <th>Tarih</th><th>Grup</th><th>Firma</th><th>Telefon numarası</th>
+    <th>Tonaj / Ücret cevabı</th><th>Sınıf</th>
+    <th>Durum</th><th>Sonraki takip</th><th>Sil</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td class="c-sel" data-label="Seç"><input type="checkbox" class="row-sel" data-idx="${idx}"
       ${SELECTED.has(leadKey(l)) ? "checked" : ""} aria-label="Bu lead'i seç"></td>
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td data-label="Grup">${groupCell(l)}</td>
     <td data-label="Firma">${firmaCell(l)}</td>
+    <td data-label="Telefon numarası">${telefonCell(l)}</td>
     <td data-label="${leadGroupOf(l) === "cin" ? "Ücret cevabı" : "Tonaj"}">${tonajCell(l)}</td>
     <td data-label="Sınıf">${klassCell(l)}</td>
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
-    <td data-label="Telefon">${escapeHtml(l.phone)}</td>
     <td data-label="Sil"><button class="row-del" data-idx="${idx}" title="Bu lead'i sil" aria-label="Sil">🗑️</button></td>
   </tr>`).join("");
   table.innerHTML = head + rows;
@@ -903,6 +904,30 @@ function firmaCell(l) {
   if (!urun) return '<span class="firma-cell">' + ad + "</span>";
   return '<span class="firma-cell">' + ad +
     '<span class="urun" title="' + escapeHtml(urun) + '">' + escapeHtml(urun) + "</span></span>";
+}
+
+/* Tablodaki "Telefon numarası" hücresi. Sütun Firma'nın yanına alındı: en
+   sonda, "Sil" butonunun yanındayken dar ekranda sağa kayıyor ve numara
+   görünmüyordu (özellikle Çin leadlerinde sorun oluyordu).
+   Telefon alanı boşsa WhatsApp numarasına düşülür — içe aktarmada ikisi de
+   aynı numaradan doldurulur, ama elle girilmiş eski kayıtlarda biri boş
+   kalabiliyor. İkisi de yoksa boş hücre yerine "—" yazılır: boş hücre
+   "numara yok"tan çok "tablo bozuk" gibi duruyordu. */
+function telefonCell(l) {
+  const ham = String(l.phone || l.whatsapp || "").trim();
+  if (!ham) return '<span class="due-none" title="Numara kayıtlı değil">—</span>';
+  return '<span class="tel-cell">' + escapeHtml(telefonBicim(ham)) + "</span>";
+}
+
+/* Türkiye numarasını okunur yazar: 5321234567 -> 0532 123 45 67.
+   Yurt dışı numarası veya tanınmayan biçim olduğu gibi bırakılır — körlemesine
+   biçimlendirmek "+49 176 …" gibi numaraları bozuyordu. */
+function telefonBicim(ham) {
+  let n = String(ham).replace(/\D/g, "");
+  if (n.length === 12 && n.startsWith("90")) n = n.slice(2);
+  else if (n.length === 11 && n.startsWith("0")) n = n.slice(1);
+  if (n.length !== 10) return ham;
+  return "0" + n.slice(0, 3) + " " + n.slice(3, 6) + " " + n.slice(6, 8) + " " + n.slice(8);
 }
 
 // Tablodaki "Grup" hücresi
