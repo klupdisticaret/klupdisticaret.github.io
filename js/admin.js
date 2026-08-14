@@ -472,17 +472,22 @@ function openCard(lead) {
 
   /* Çin hizmetinde tonaj sorulmaz; sınıfı ücret sorusunun cevabı belirler.
      Kartta hem müşterinin verdiği ham cevap, hem de görüşmeden sonra
-     değiştirilebilsin diye açılır liste gösterilir. */
+     değiştirilebilsin diye açılır liste gösterilir.
+     data-ilk = listenin AÇILIŞ değeri: kaydederken sınıf yalnızca bu değer
+     değiştiyse yeniden hesaplanır (bkz. saveCard). */
   const cinLead = leadGroupOf(lead) === "cin";
   const cinKey  = typeof cinPaidKey === "function" ? cinPaidKey(lead.cinPaid) : "";
   const cinAlan = !cinLead ? "" : `
       <div class="field full"><label class="field-label">Ücretli hizmet cevabı
         <span style="font-weight:400;text-transform:none">(sınıfı bu belirler)</span></label>
-        <select id="stCin" class="text-input">
+        <select id="stCin" class="text-input" data-ilk="${escapeHtml(cinKey)}">
           <option value=""${cinKey ? "" : " selected"}>— Cevap yok / bilinmiyor —</option>
           ${(typeof CIN_PAID_ANSWERS !== "undefined" ? CIN_PAID_ANSWERS : []).map(a =>
             `<option value="${a.key}"${a.key === cinKey ? " selected" : ""}>${escapeHtml(a.label)}</option>`).join("")}
-        </select></div>`;
+        </select>
+        ${(!cinKey && lead.klass) ? '<p class="row-hint" style="margin:6px 0 0">Müşterinin cevabı kayıtlı değil. Dokunmazsan mevcut sınıf (<b>' +
+            escapeHtml(klassShort(lead.klass)) + '</b>) korunur; listeden seçersen sınıf yeniden hesaplanır.</p>' : ""}
+        </div>`;
 
   document.getElementById("cardBody").innerHTML = `
     <div class="kv">
@@ -545,17 +550,23 @@ async function saveCard(lead) {
   /* Ücret cevabı değiştiyse sınıf yeniden hesaplanır — rozet, "Sıcak + VIP"
      sayacı ve sınıf dağılımı hep aynı alandan beslendiği için hepsi birlikte
      yerine oturur.
+     SINIF YALNIZCA LİSTE ELLE DEĞİŞTİRİLDİYSE HESAPLANIR (data-ilk ile
+     karşılaştırma): ham cevap elde olmayan leadlerde (cin_paid kolonu açılmamış
+     ya da içe aktarmada sütun eşleşmemiş) liste "cevap yok"ta açılıyor, sadece
+     not/durum kaydetmek bile rozeti (VIP/Sıcak/Düşük) siliyordu.
      leadGroupOf yukarıdaki lead.group ATANDIKTAN SONRA sorulur: hizmet aynı
      kayıtta Çin'den başka bir gruba çevrildiyse Çin kuralı artık işlemez,
      yoksa dondurulmuş gıda leadine ücret cevabından sınıf yazardık.
      (Karttaki Çin alanı grup değişikliğinden sonra kart yeniden açılınca kaybolur.) */
   const cinSec = document.getElementById("stCin");
   let sinifDegisti = false;
-  if (cinSec && leadGroupOf(lead) === "cin" && typeof classifyLead === "function") {
+  if (cinSec && leadGroupOf(lead) === "cin" && typeof classifyLead === "function"
+      && cinSec.value !== (cinSec.dataset.ilk || "")) {
     lead.cinPaid = cinSec.value;
     const c = classifyLead({ group: "cin", cinPaid: lead.cinPaid });
     lead.klass = c.klass; lead.score = c.score; lead.leadGroup = c.group;
     sinifDegisti = true;
+    cinSec.dataset.ilk = cinSec.value; // kart açık kalırsa ikinci kayıt tekrar tetiklemesin
   }
 
   const refresh = () => { renderStatusDist(CACHE); renderStats(CACHE); renderClassDist(CACHE); renderFilters(); renderTable(getFiltered()); };
