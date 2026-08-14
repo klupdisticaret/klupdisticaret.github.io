@@ -45,13 +45,6 @@ const CIN_PAID_ANSWERS = [
     label: "Hayır — şu an ücretli hizmet düşünmüyor", kisa: "Hayır" },
 ];
 
-/* Reklamda sorulan sorunun tam metni. Kartta cevabın üstünde gösterilir ki
-   "müşteri neye evet dedi?" sorusu panelden çıkmadan yanıtlanabilsin. */
-const CIN_PAID_QUESTION =
-  "Bu hizmet ücretsiz danışmanlık değildir. Ürün araştırması, doğru GTİP No ön " +
-  "araştırması, tedarikçi / üretici adayı bulma, fiyat teklif talebi hazırlama ve " +
-  "teklif karşılaştırma çalışması ürün kapsamına göre 500–1000 USD + KDV aralığında " +
-  "ücretlendirilir. Devam etmek ister misiniz?";
 const cinPaidInfo = (key) => CIN_PAID_ANSWERS.find(a => a.key === key) || null;
 
 /* Serbest metin cevabı üç şıktan birine indirger.

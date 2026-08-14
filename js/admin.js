@@ -460,15 +460,15 @@ overlay.addEventListener("click", e => { if (e.target === overlay) closeCard(); 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
 function closeCard() { overlay.hidden = true; }
 
-/* Kartta ücret sorusunun cevabı: reklamdaki SORU + müşterinin verdiği HAM cevap,
-   iki sütunu birden kaplayan bir blok olarak. Önce tek satırlık küçük bir alandı
-   ve cevap boşken yalnızca "-" yazıyordu; bu, "müşteri cevaplamamış" gibi
-   okunuyordu — oysa çoğu kayıtta cevap hiç saklanmamıştı (cin_paid kolonu
-   açılmadan önce aktarılan leadler). Artık boşluğun sebebi ve çözümü yazıyor. */
+/* Kartta ücret sorusunun cevabı: müşterinin verdiği HAM cevap, iki sütunu
+   birden kaplayan bir blok olarak. Önce tek satırlık küçük bir alandı ve cevap
+   boşken yalnızca "-" yazıyordu; bu, "müşteri cevaplamamış" gibi okunuyordu —
+   oysa çoğu kayıtta cevap hiç saklanmamıştı (cin_paid kolonu açılmadan önce
+   aktarılan leadler). Artık boşluğun sebebi ve çözümü yazıyor.
+   Sorunun tam metni kartta gösterilmiyor: soru zaten sabit, cevabı yeterli. */
 function cinCevapKutusu(lead) {
   const ham  = String(lead.cinPaid || "").trim();
   const info = typeof cinPaidInfo === "function" ? cinPaidInfo(cinPaidKey(ham)) : null;
-  const soru = typeof CIN_PAID_QUESTION === "string" ? CIN_PAID_QUESTION : "";
   const ipucu = (m) => '<span class="row-hint" style="margin:4px 0 0">' + m + "</span>";
 
   let govde;
@@ -485,8 +485,6 @@ function cinCevapKutusu(lead) {
 
   return '<div style="grid-column:1/-1">' +
     "<span>Ücretli hizmet sorusuna cevabı</span>" + govde +
-    (soru ? '<span class="row-hint" style="margin:6px 0 0;font-style:italic">Sorulan soru: ' +
-            escapeHtml(soru) + "</span>" : "") +
     "</div>";
 }
 

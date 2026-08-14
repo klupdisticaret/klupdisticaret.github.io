@@ -186,7 +186,9 @@
     .pipeline li.current { color:var(--orange-dark); font-weight:700; }
     .field-label { font-size:.8rem; font-weight:700; color:var(--muted); display:block; margin:10px 0 6px; }
     .card-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
-    textarea.text-input { min-height:70px; resize:vertical; font-family:inherit; }
+    /* Admin notu: tek satırlık görüşme notu değil, birikmeli bir defter gibi
+       kullanılıyor — açılış yüksekliği 70px'ten 170px'e çıkarıldı. */
+    textarea.text-input { min-height:170px; resize:vertical; font-family:inherit; line-height:1.5; }
     select.text-input { appearance:auto; }
     .save-ok { color:var(--ok); font-weight:600; font-size:.85rem; }
 
@@ -346,10 +348,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=20"></script>
   <script src="js/supabase.js?v=29"></script>
-  <script src="js/scoring.js?v=33"></script>
+  <script src="js/scoring.js?v=34"></script>
   <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
   <script src="js/products.js?v=49"></script>
   <script src="js/import.js?v=9"></script>
-  <script src="js/admin.js?v=54"></script>
+  <script src="js/admin.js?v=55"></script>
 </body>
 </html>
