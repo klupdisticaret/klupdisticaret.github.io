@@ -38,12 +38,20 @@ const SCORE_MAP = {
    "Devam etmek ister misiniz?" cevabı belirler. */
 const CIN_PAID_ANSWERS = [
   { key: "evet",  klass: "VIP Lead",              letter: "D", score: 90,
-    label: "Evet — ücretli hizmeti değerlendirir" },
+    label: "Evet — ücretli hizmeti değerlendirir", kisa: "Evet" },
   { key: "detay", klass: "Sıcak Lead",            letter: "C", score: 60,
-    label: "Detayları görüştükten sonra karar verecek" },
+    label: "Detayları görüştükten sonra karar verecek", kisa: "Detay sonrası" },
   { key: "hayir", klass: "Düşük Öncelikli Lead",  letter: "A", score: 15,
-    label: "Hayır — şu an ücretli hizmet düşünmüyor" },
+    label: "Hayır — şu an ücretli hizmet düşünmüyor", kisa: "Hayır" },
 ];
+
+/* Reklamda sorulan sorunun tam metni. Kartta cevabın üstünde gösterilir ki
+   "müşteri neye evet dedi?" sorusu panelden çıkmadan yanıtlanabilsin. */
+const CIN_PAID_QUESTION =
+  "Bu hizmet ücretsiz danışmanlık değildir. Ürün araştırması, doğru GTİP No ön " +
+  "araştırması, tedarikçi / üretici adayı bulma, fiyat teklif talebi hazırlama ve " +
+  "teklif karşılaştırma çalışması ürün kapsamına göre 500–1000 USD + KDV aralığında " +
+  "ücretlendirilir. Devam etmek ister misiniz?";
 const cinPaidInfo = (key) => CIN_PAID_ANSWERS.find(a => a.key === key) || null;
 
 /* Serbest metin cevabı üç şıktan birine indirger.

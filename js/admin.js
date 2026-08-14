@@ -339,7 +339,7 @@ function renderTable(leads) {
   }
   const head = `<tr>
     <th class="c-sel"><input type="checkbox" id="selAll" title="Görünen tümünü seç" aria-label="Görünen tümünü seç"></th>
-    <th>Tarih</th><th>Grup</th><th>Firma</th><th>Tonaj</th><th>Sınıf</th>
+    <th>Tarih</th><th>Grup</th><th>Firma</th><th>Tonaj / Ücret cevabı</th><th>Sınıf</th>
     <th>Durum</th><th>Sonraki takip</th><th>Telefon</th><th>Sil</th></tr>`;
   const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
     <td class="c-sel" data-label="Seç"><input type="checkbox" class="row-sel" data-idx="${idx}"
@@ -347,7 +347,7 @@ function renderTable(leads) {
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
     <td data-label="Grup">${groupCell(l)}</td>
     <td data-label="Firma">${firmaCell(l)}</td>
-    <td data-label="Tonaj">${escapeHtml(l.tonnage)}</td>
+    <td data-label="${leadGroupOf(l) === "cin" ? "Ücret cevabı" : "Tonaj"}">${tonajCell(l)}</td>
     <td data-label="Sınıf">${klassCell(l)}</td>
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
@@ -460,6 +460,36 @@ overlay.addEventListener("click", e => { if (e.target === overlay) closeCard(); 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
 function closeCard() { overlay.hidden = true; }
 
+/* Kartta ücret sorusunun cevabı: reklamdaki SORU + müşterinin verdiği HAM cevap,
+   iki sütunu birden kaplayan bir blok olarak. Önce tek satırlık küçük bir alandı
+   ve cevap boşken yalnızca "-" yazıyordu; bu, "müşteri cevaplamamış" gibi
+   okunuyordu — oysa çoğu kayıtta cevap hiç saklanmamıştı (cin_paid kolonu
+   açılmadan önce aktarılan leadler). Artık boşluğun sebebi ve çözümü yazıyor. */
+function cinCevapKutusu(lead) {
+  const ham  = String(lead.cinPaid || "").trim();
+  const info = typeof cinPaidInfo === "function" ? cinPaidInfo(cinPaidKey(ham)) : null;
+  const soru = typeof CIN_PAID_QUESTION === "string" ? CIN_PAID_QUESTION : "";
+  const ipucu = (m) => '<span class="row-hint" style="margin:4px 0 0">' + m + "</span>";
+
+  let govde;
+  if (ham && info)
+    govde = "<b>" + escapeHtml(ham) + "</b>" +
+      ipucu("Sınıf karşılığı: <b>" + escapeHtml(info.klass) + "</b> (" + info.score + " puan)");
+  else if (ham)
+    govde = "<b>" + escapeHtml(ham) + "</b>" +
+      ipucu("Bu cevap üç şıktan birine oturtulamadı; sınıfı aşağıdaki listeden elle seçebilirsin.");
+  else
+    govde = '<b class="due-none">Kayıtlı değil</b>' +
+      ipucu("Bu lead, cevap alanı veritabanında açılmadan önce aktarılmış olabilir. " +
+            "Aynı Meta dosyasını yeniden içe aktarırsan boş cevaplar dolar (kayıt çoğaltmaz).");
+
+  return '<div style="grid-column:1/-1">' +
+    "<span>Ücretli hizmet sorusuna cevabı</span>" + govde +
+    (soru ? '<span class="row-hint" style="margin:6px 0 0;font-style:italic">Sorulan soru: ' +
+            escapeHtml(soru) + "</span>" : "") +
+    "</div>";
+}
+
 function openCard(lead) {
   document.getElementById("cardTitle").textContent = lead.company || lead.contact || "Müşteri Kartı";
   document.getElementById("cardRef").textContent =
@@ -498,7 +528,7 @@ function openCard(lead) {
       ${kv("Şehir", lead.location)}
       ${kv("Liman", lead.port)}
       ${kv("Girilen ürünler", (lead.products || []).join(", "))}
-      ${cinLead ? kv("Ücretli hizmet cevabı", lead.cinPaid) : kv("Tonaj", lead.tonnage)}
+      ${cinLead ? cinCevapKutusu(lead) : kv("Tonaj", lead.tonnage)}
       ${cinLead ? "" : kv("Bütçe", lead.budget)}
       ${kv("İthalat zamanı", lead.timing)}
       ${cinLead ? "" : kv("Daha önce ithalat?", lead.experience)}
@@ -886,6 +916,19 @@ function groupCell(l) {
 /* Tablodaki "Sınıf" hücresi. Sınıfı boş olan lead ROZETSİZ gösterilir:
    düz rozet basılırsa "Düşük" renginde bir "-" çıkıyor ve cevabı bilinmeyen
    Çin leadi, gerçekten "hayır" diyenle aynı görünüyordu. */
+/* Çin leadinde tonaj sorulmaz; o sütun boş duruyordu. Yerine sınıfı belirleyen
+   ücret cevabı yazılır — hangi leadin neye "evet" dediği tablodan görünsün.
+   Tam cevap metni hücrenin title'ında (üstüne gelince) durur. */
+function tonajCell(l) {
+  if (leadGroupOf(l) !== "cin") return escapeHtml(l.tonnage);
+  const ham  = String(l.cinPaid || "").trim();
+  const info = typeof cinPaidInfo === "function" ? cinPaidInfo(cinPaidKey(ham)) : null;
+  if (info) return '<b title="' + escapeHtml(ham || info.label) + '">' + escapeHtml(info.kisa) + "</b>";
+  if (ham) return '<span title="' + escapeHtml(ham) + '">' +
+    escapeHtml(ham.length > 24 ? ham.slice(0, 23) + "…" : ham) + "</span>";
+  return '<span class="due-none" title="Ücret sorusunun cevabı kayıtlı değil">—</span>';
+}
+
 function klassCell(l) {
   if (!l.klass) return '<span class="due-none" title="Sınıflandırılmadı">—</span>';
   return '<span class="lead-badge lead-' + cssClass(l.klass) + '">' + escapeHtml(klassShort(l.klass)) + "</span>";
