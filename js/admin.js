@@ -13,6 +13,8 @@ let CACHE = [];
 let activeStatus = "Tümü";
 let activeAction = "Tüm aksiyonlar";
 let activeGroup = "tumu";   // ürün grubu filtresi (aşağıdaki GROUP_FILTERS anahtarları)
+let activeClass = "tumu";   // sınıf filtresi (aşağıdaki CLASS_FILTERS anahtarları)
+let classSort = 0;          // 0 = tarihe göre, 1 = VIP üstte, -1 = Düşük üstte
 let SELECTED = new Set();   // çoklu seçim: lead anahtarları (Supabase'de id, yereldeyse refNo)
 
 // Supabase kaydında id, localStorage yedeğinde refNo tekil anahtardır.
@@ -57,6 +59,31 @@ function todayStr() { const d = new Date(); return d.getFullYear()+"-"+String(d.
 const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Cevap bekleniyor","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
 // Aksiyon filtreleri (takip tarihine göre)
 const ACTION_FILTERS = ["Tüm aksiyonlar","Bugün takip edilecekler","Geciken takipler","Takip tarihi olmayanlar"];
+
+/* --- Sınıf filtreleri + sıralama ---
+   klass: lead.klass alanındaki tam değer ("" = hiç sınıflanmamış lead).
+   CLASS_ORDER, "Sınıf" sütun başlığına basınca kullanılan öncelik sırası:
+   küçük numara üstte kalır. */
+const CLASS_FILTERS = [
+  { key: "tumu",  label: "Tümü" },
+  { key: "vip",   label: "👑 VIP",   klass: "VIP Lead" },
+  { key: "sicak", label: "🔥 Sıcak", klass: "Sıcak Lead" },
+  { key: "takip", label: "👀 Takip", klass: "Takip Edilecek Lead" },
+  { key: "dusuk", label: "❄️ Düşük", klass: "Düşük Öncelikli Lead" },
+  { key: "yok",   label: "Sınıfsız", klass: "" },   // sayısı 0 ise gizlenir
+];
+const CLASS_ORDER = {
+  "VIP Lead": 0, "Sıcak Lead": 1, "Takip Edilecek Lead": 2,
+  "Düşük Öncelikli Lead": 3, "Düşük Lead": 3, "": 4,
+};
+// Sıralama açıkken tabloya giren blok başlıkları
+const CLASS_BLOK = {
+  "VIP Lead": "👑 VIP Lead", "Sıcak Lead": "🔥 Sıcak Lead",
+  "Takip Edilecek Lead": "👀 Takip Edilecek Lead",
+  "Düşük Öncelikli Lead": "❄️ Düşük Öncelikli Lead",
+  "Düşük Lead": "❄️ Düşük Öncelikli Lead", "": "Sınıfsız",
+};
+const classRank = l => (CLASS_ORDER[l.klass || ""] != null ? CLASS_ORDER[l.klass || ""] : 4);
 
 /* --- Ürün grubu filtreleri ---
    key: lead.group alanındaki değer ("tumu" ve "yok" sanal anahtarlardır).
@@ -230,10 +257,33 @@ function matchActionFilter(l) {
   return true;
 }
 function matchGroupFilter(l) { return activeGroup === "tumu" || leadGroupOf(l) === activeGroup; }
-function getFiltered() { return CACHE.filter(l => matchStatusFilter(l) && matchActionFilter(l) && matchGroupFilter(l)); }
+function matchClassFilter(l) {
+  if (activeClass === "tumu") return true;
+  const f = CLASS_FILTERS.find(x => x.key === activeClass);
+  return !!f && (l.klass || "") === f.klass;
+}
+function getFiltered() {
+  const list = CACHE.filter(l =>
+    matchStatusFilter(l) && matchActionFilter(l) && matchGroupFilter(l) && matchClassFilter(l));
+  // Sınıf sıralaması kapalıyken liste veritabanından geldiği gibi (yeniden eskiye) kalır.
+  if (classSort !== 0) {
+    list.sort((a, b) => {
+      const fark = classRank(a) - classRank(b);
+      if (fark !== 0) return classSort * fark;
+      // Aynı sınıf içinde yine yeniden eskiye
+      return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+    });
+  }
+  return list;
+}
 
 function statusCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => l.leadStatus === name).length; }
 function groupCount(key) { return key === "tumu" ? CACHE.length : CACHE.filter(l => leadGroupOf(l) === key).length; }
+function classCount(key) {
+  if (key === "tumu") return CACHE.length;
+  const f = CLASS_FILTERS.find(x => x.key === key);
+  return f ? CACHE.filter(l => (l.klass || "") === f.klass).length : 0;
+}
 function actionCount(name) {
   const t = todayStr();
   if (name === "Tüm aksiyonlar") return CACHE.length;
@@ -268,6 +318,20 @@ function renderFilters() {
       b.innerHTML = escapeHtml(name) + ` <span class="cnt">${statusCount(name)}</span>`;
       b.addEventListener("click", () => { activeStatus = name; renderFilters(); renderTable(getFiltered()); });
       sf.appendChild(b);
+    });
+  }
+  const cf = document.getElementById("classFilters");
+  if (cf) {
+    cf.innerHTML = "";
+    CLASS_FILTERS.forEach(({ key, label }) => {
+      const n = classCount(key);
+      // Hiç sınıflanmamış lead yoksa "Sınıfsız" butonu yer kaplamasın
+      if (n === 0 && key === "yok" && key !== activeClass) return;
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (key === activeClass ? " is-active" : "");
+      b.innerHTML = escapeHtml(label) + ` <span class="cnt">${n}</span>`;
+      b.addEventListener("click", () => { activeClass = key; renderFilters(); renderTable(getFiltered()); });
+      cf.appendChild(b);
     });
   }
   const af = document.getElementById("actionFilters");
@@ -329,20 +393,69 @@ function renderFieldDist(containerId, leads, field) {
   distBars(containerId, Object.entries(map).sort((a, b) => b[1] - a[1]));
 }
 
+/* --- Sınıf sıralaması ---
+   "Sınıf" başlığına her basışta: VIP üstte → Düşük üstte → tarihe geri dön. */
+function toggleClassSort() {
+  classSort = classSort === 0 ? 1 : classSort === 1 ? -1 : 0;
+  renderTable(getFiltered());
+}
+
+/* --- Sınıf filtresi / sıralaması özet çubuğu ---
+   Telefonda sütun başlıkları gizlendiği için sıralama butonu da burada duruyor. */
+function renderSortBar(leads) {
+  const bar = document.getElementById("sortBar");
+  if (!bar) return;
+  const f = CLASS_FILTERS.find(x => x.key === activeClass);
+  const filtreAd = (activeClass === "tumu" || !f) ? "Tüm sınıflar" : f.label;
+  const siraAd = classSort === 1 ? "Sınıf — VIP üstte"
+    : classSort === -1 ? "Sınıf — Düşük üstte" : "Tarih (yeniden eskiye)";
+  bar.innerHTML =
+    `Sınıf filtresi: <b>${escapeHtml(filtreAd)}</b> &nbsp;·&nbsp; ` +
+    `Sıralama: <b>${escapeHtml(siraAd)}</b> &nbsp;·&nbsp; ` +
+    `Görünen: <b>${leads.length} lead</b>` +
+    `<span class="sb-btns">` +
+      `<button type="button" class="mobil-sirala" id="mobilSirala">⇅ Sınıfa göre sırala</button>` +
+      `<button type="button" id="sinifSifirla">Sıfırla</button>` +
+    `</span>`;
+  const m = document.getElementById("mobilSirala");
+  if (m) m.addEventListener("click", toggleClassSort);
+  document.getElementById("sinifSifirla").addEventListener("click", () => {
+    activeClass = "tumu"; classSort = 0; renderFilters(); renderTable(getFiltered());
+  });
+}
+
 /* --- Tablo (tıklanabilir satırlar) --- */
 function renderTable(leads) {
   const table = document.getElementById("leadTable");
+  renderSortBar(leads);
   if (!leads.length) {
-    table.innerHTML = `<tr><td class="empty">Bu filtrede lead yok.</td></tr>`;
+    table.innerHTML = `<tr><td class="empty" colspan="10">Bu filtrede lead yok.</td></tr>`;
     updateBulkBar(leads);   // çubuk eski sayıyla asılı kalmasın
     return;
   }
+  // "Sınıf" başlığı tıklanabilir: VIP üstte → Düşük üstte → tarihe geri dön
+  const ok = classSort === 1 ? "▼" : classSort === -1 ? "▲" : "⇅";
   const head = `<tr>
     <th class="c-sel"><input type="checkbox" id="selAll" title="Görünen tümünü seç" aria-label="Görünen tümünü seç"></th>
     <th>Tarih</th><th>Grup</th><th>Firma</th><th>Telefon numarası</th>
-    <th>Tonaj / Ücret cevabı</th><th>Sınıf</th>
+    <th>Tonaj / Ücret cevabı</th>
+    <th class="sortable${classSort ? " is-sorted" : ""}" id="thSinif" tabindex="0" role="button"
+        title="Sınıfa göre sırala">Sınıf <span class="ok">${ok}</span></th>
     <th>Durum</th><th>Sonraki takip</th><th>Sil</th></tr>`;
-  const rows = leads.map((l, idx) => `<tr class="clickable" data-idx="${idx}">
+  // Sıralama açıkken her sınıfın önüne blok başlığı girer (VIP'ler bir arada, sıcaklar bir arada...)
+  let oncekiKlass = null;
+  const rows = leads.map((l, idx) => {
+    let basi = "";
+    if (classSort !== 0) {
+      const k = l.klass || "";
+      if (k !== oncekiKlass) {
+        const adet = leads.filter(x => (x.klass || "") === k).length;
+        basi = `<tr class="grup-basi"><td colspan="10">${escapeHtml(CLASS_BLOK[k] || k)}` +
+               ` <span class="n">— ${adet} lead</span></td></tr>`;
+        oncekiKlass = k;
+      }
+    }
+    return basi + `<tr class="clickable" data-idx="${idx}">
     <td class="c-sel" data-label="Seç"><input type="checkbox" class="row-sel" data-idx="${idx}"
       ${SELECTED.has(leadKey(l)) ? "checked" : ""} aria-label="Bu lead'i seç"></td>
     <td data-label="Tarih">${l.createdAt ? new Date(l.createdAt).toLocaleDateString("tr-TR") : "-"}</td>
@@ -354,8 +467,16 @@ function renderTable(leads) {
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
     <td data-label="Sil"><button class="row-del" data-idx="${idx}" title="Bu lead'i sil" aria-label="Sil">🗑️</button></td>
-  </tr>`).join("");
+  </tr>`;
+  }).join("");
   table.innerHTML = head + rows;
+  const th = document.getElementById("thSinif");
+  if (th) {
+    th.addEventListener("click", toggleClassSort);
+    th.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleClassSort(); }
+    });
+  }
   table.querySelectorAll("tr.clickable").forEach(tr => {
     tr.addEventListener("click", () => openCard(leads[+tr.dataset.idx]));
   });

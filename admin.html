@@ -145,6 +145,14 @@
       /* Kart görünümünde satır dar: ürün cevabı kısaltılmak yerine alta sarsın */
       .firma-cell{max-width:64%}
       .firma-cell .urun{white-space:normal}
+      /* Sınıf bloğu başlığı kart listesinde ayraç gibi dursun */
+      #leadTable tr.grup-basi{padding:0;border:none;margin-bottom:6px;background:transparent}
+      #leadTable tr.grup-basi td{display:block;text-align:left;border-radius:8px;padding:7px 12px}
+      #leadTable tr.grup-basi td::before{content:none}
+      /* Sütun başlıkları gizli olduğu için sıralama butonu burada.
+         (Seçici .sort-bar ile başlıyor: aşağıdaki .mobil-sirala{display:none}
+         bu bloktan sonra geldiği için özgüllüğü yüksek tutmak gerekiyor.) */
+      .sort-bar .mobil-sirala{display:inline-block}
     }
     .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:6px; }
     .edit-grid .field { display:flex; flex-direction:column; }
@@ -163,6 +171,35 @@
     }
     .filter-btn:hover { border-color:#ffc59e; }
     .filter-btn.is-active { background:var(--orange); border-color:var(--orange); color:#fff; }
+
+    /* Sınıf sıralaması: tıklanabilir sütun başlığı */
+    th.sortable { cursor:pointer; user-select:none; }
+    th.sortable:hover { color:var(--orange-dark); }
+    th.sortable:focus-visible { outline:2px solid var(--orange); outline-offset:-2px; }
+    th.sortable .ok { opacity:.35; margin-left:4px; font-size:.8rem; }
+    th.sortable.is-sorted { color:var(--orange-dark); }
+    th.sortable.is-sorted .ok { opacity:1; }
+    /* Sıralama açıkken her sınıfın başına giren blok başlığı */
+    tr.grup-basi td {
+      background:#f4f6fa; font-size:.74rem; font-weight:700; letter-spacing:.04em;
+      text-transform:uppercase; color:var(--muted); padding:7px 10px;
+    }
+    tr.grup-basi td .n { color:var(--ink); }
+    /* Sınıf filtresi + sıralama özeti */
+    .sort-bar {
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+      background:var(--orange-soft); border:1px solid #ffd0ac; border-radius:10px;
+      padding:9px 13px; font-size:.82rem; color:#8a4a1f; margin:12px 0 10px;
+    }
+    .sort-bar b { color:#7a3f16; }
+    .sort-bar .sb-btns { margin-left:auto; display:flex; gap:8px; }
+    .sort-bar button {
+      background:#fff; border:1px solid #ffd0ac; border-radius:999px;
+      padding:5px 12px; font-size:.78rem; font-weight:600; color:#8a4a1f; cursor:pointer;
+      font-family:inherit;
+    }
+    .sort-bar button:hover { border-color:var(--orange); }
+    .mobil-sirala { display:none; }   /* telefonda görünür (aşağıdaki media query) */
     .manual-note { background:#fff7ea; border:1px solid #ffdca6; color:#8a5a00; border-radius:10px; padding:10px 12px; font-size:.84rem; margin:4px 0 6px; }
 
     /* Modal / müşteri kartı */
@@ -321,9 +358,13 @@
       <div class="filters" id="groupFilters"></div>
       <p class="flabel-lbl">Lead durumu</p>
       <div class="filters" id="filters"></div>
+      <p class="flabel-lbl">Sınıf</p>
+      <div class="filters" id="classFilters"></div>
       <p class="flabel-lbl">Aksiyon</p>
       <div class="filters" id="actionFilters"></div>
+      <div class="sort-bar" id="sortBar"></div>
       <p class="row-hint">👉 Detay, durum, aksiyon, not ve takip tarihi için bir satıra tıklayın. Toplu silmek için soldaki kutuları işaretleyin.</p>
+      <p class="row-hint">⇅ Tablodaki <b>Sınıf</b> başlığına basınca liste sınıfa göre gruplanır (önce VIP, sonra Sıcak, Takip, Düşük). Bir daha basınca ters sıraya, üçüncüde tarihe döner.</p>
       <div class="bulk-bar" id="bulkBar" hidden>
         <b id="bulkCount">0 lead seçildi</b>
         <button class="btn--sm btn--danger" id="bulkDel">🗑️ Seçilenleri sil</button>
@@ -354,6 +395,6 @@
   <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
   <script src="js/products.js?v=49"></script>
   <script src="js/import.js?v=9"></script>
-  <script src="js/admin.js?v=56"></script>
+  <script src="js/admin.js?v=57"></script>
 </body>
 </html>
