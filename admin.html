@@ -121,7 +121,11 @@
     .grp-bakliyat { background:#f0e6d6; color:#7a5a1e; }
     .grp-hepsi    { background:#ece9f7; color:#5b4fa0; }
     .grp-cin      { background:#ffe0d9; color:#b3341c; }
+    .grp-ambalaj  { background:#dff0ee; color:#1f7a6c; }
     .grp-yok      { background:transparent; color:var(--muted); font-weight:400; }
+    /* Ambalaj kartındaki 3 soru/cevap kutusu (kv gridine gömülü, tam genişlik) */
+    .ambalaj-box { display:flex; flex-direction:column; gap:10px; margin-bottom:4px; }
+    .ambalaj-q { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg); }
     /* Firma hücresi: firma adı + altında müşterinin yazdığı ürün(ler).
        Serbest metin cevaplar uzun olabildiği için tek satıra kısaltılır. */
     .firma-cell { display:inline-block; max-width:300px; vertical-align:top; }
@@ -390,11 +394,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=20"></script>
-  <script src="js/supabase.js?v=29"></script>
-  <script src="js/scoring.js?v=34"></script>
+  <script src="js/supabase.js?v=30"></script>
+  <script src="js/scoring.js?v=35"></script>
   <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
   <script src="js/products.js?v=49"></script>
-  <script src="js/import.js?v=9"></script>
-  <script src="js/admin.js?v=57"></script>
+  <script src="js/import.js?v=10"></script>
+  <script src="js/admin.js?v=58"></script>
 </body>
 </html>

@@ -107,14 +107,25 @@ function classifyCin(state) {
   };
 }
 
+/* Ambalaj Sarf Malzemeleri: 3 ayrı soru var ama hiçbiri sınıf/puan belirlemiyor
+   (bilinçli tercih — cevaplar admin panelinde sadece bilgi amaçlı gösterilir).
+   Tonaj sorulmadığı için Çin hizmeti gibi tonaj tablosunun dışında tutulur. */
+function classifyAmbalaj(state) {
+  return {
+    klass: "", group: null, label: "", score: 0, level: 0,
+    showWhatsapp: false, showMeeting: false, message: GROUP_MESSAGES.A,
+  };
+}
+
 /* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
    Görünürlük, tonaj x bütçe matrisine (VISIBILITY) göre hücre-hücre belirlenir;
    "ne zaman" ve "daha önce" sorularının TÜM seçenekleri geçerlidir (engellemez).
    Seviye 0 -> sadece kayıt | 1 -> WhatsApp | 2 -> WhatsApp + toplantı
    { klass, group, label, score, level, showWhatsapp, showMeeting, message }
-   Çin hizmeti bu matrisin dışındadır (bkz. classifyCin). */
+   Çin ve Ambalaj hizmetleri bu matrisin dışındadır (bkz. classifyCin, classifyAmbalaj). */
 function classifyLead(state) {
   if (String(state.group || "") === "cin") return classifyCin(state);
+  if (String(state.group || "") === "ambalaj") return classifyAmbalaj(state);
 
   const g = TONNAGE_GROUP[state.tonnage] || TONNAGE_GROUP["1–5 ton"];
   const score = scoreLead(state);

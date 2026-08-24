@@ -46,6 +46,13 @@ alter table public.leads add column if not exists next_followup text;   -- Sonra
 -- yalnızca müşterinin verdiği CEVAP METNİ saklanamaz.
 alter table public.leads add column if not exists cin_paid text;
 
+-- Ambalaj Sarf Malzemeleri: 3 ayrı soru var, üçünün cevabı da ayrı kolonda saklanır.
+-- Bu hizmette otomatik sınıflandırma (VIP/Sıcak/Düşük) yapılmaz; cevaplar sadece
+-- admin panelinde bilgi amaçlı gösterilir.
+alter table public.leads add column if not exists ambalaj_bambu text;
+alter table public.leads add column if not exists ambalaj_hijyen text;
+alter table public.leads add column if not exists ambalaj_paketleme text;
+
 -- Güvenlik (Row Level Security) açık
 alter table public.leads enable row level security;
 

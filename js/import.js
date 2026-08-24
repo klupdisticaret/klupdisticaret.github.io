@@ -20,6 +20,14 @@ const IMP_ALANLAR = [
   // gelse de tutsun diye. ("ücretli" ipucu "ücretsiz danışmanlık"a takılmaz.)
   { key: "cinPaid",    ad: "Ücretli hizmet cevabı",
     ipuclari: ["ücretli hizmet", "ücretlendirilir", "danışmanlık", "devam etmek", "hizmeti değerlendir"] },
+  // Ambalaj Sarf Malzemeleri hizmetinin 3 sorusu. İpuçları TEK kelime gibi
+  // görünse de birbirinin başlığında da geçebiliyor (üçü de "…malzemelerini
+  // getirmek istiyorsunuz?" ile bitiyor); her ipucu o soruya ÖZGÜ kelimeye
+  // dayanır (bambu / hijyen / "ambalaj ve paketleme" birlikte) ki sütunlar
+  // birbirine karışmasın.
+  { key: "ambalajBambu",     ad: "Bambu ambalaj cevabı",     ipuclari: ["bambu"] },
+  { key: "ambalajHijyen",    ad: "Hijyen malzemesi cevabı",  ipuclari: ["hijyen", "temizlik hijyen"] },
+  { key: "ambalajPaketleme", ad: "Ambalaj/paketleme cevabı", ipuclari: ["ambalaj ve paketleme", "paketleme"] },
   { key: "phone",      ad: "Telefon",      ipuclari: ["phone number", "phone", "telefon", "gsm", "cep", "tel", "numara"] },
   { key: "email",      ad: "E-posta",      ipuclari: ["email", "e posta", "eposta", "e mail", "mail"] },
   { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "şehr", "il", "location", "konum", "bulunduğunuz"] },
@@ -405,6 +413,9 @@ function impSatirdanLead(satir) {
     timing: al("timing"), experience: al("experience"),
     products: urunler,
     cinPaid: cinPaidHam,
+    ambalajBambu: al("ambalajBambu"),
+    ambalajHijyen: al("ambalajHijyen"),
+    ambalajPaketleme: al("ambalajPaketleme"),
   };
   const c = (typeof classifyLead === "function") ? classifyLead(state) : {};
   return {
@@ -437,6 +448,9 @@ const IMP_TAMAMLANABILIR = [
   ["timing",     "timing"],
   ["experience", "experience"],
   ["cinPaid",    "cin_paid"],
+  ["ambalajBambu",     "ambalaj_bambu"],
+  ["ambalajHijyen",    "ambalaj_hijyen"],
+  ["ambalajPaketleme", "ambalaj_paketleme"],
 ];
 
 function impEksikleri(dosyaLead, kayit) {
@@ -535,14 +549,24 @@ function impOnizle() {
   if (cinAnlasilmaz)
     h += '<p class="fn-hint">⚠️ ' + cinAnlasilmaz + ' Çin leadinde cevap <b>anlaşılamadı</b> (aşağıdaki tabloda ⚠️ ile işaretli). Bunlar da sınıfsız aktarılır.</p>';
 
+  // Ambalaj leadleri: sınıflandırma yok, cevaplar sadece bilgi amaçlı — eksik
+  // eşleşme uyarısı Çin'deki kadar kritik değil, o yüzden tek satırlık ipucu yeter.
+  const ambalajler = yeni.filter(l => l.group === "ambalaj");
+  const ambalajSutun = IMP_ESLES.ambalajBambu != null || IMP_ESLES.ambalajHijyen != null || IMP_ESLES.ambalajPaketleme != null;
+  if (ambalajler.length && !ambalajSutun)
+    h += '<p class="fn-hint">⚠️ Ambalaj sorularının hiçbiri eşleşmedi — ' + ambalajler.length +
+      ' leadin 3 cevabı da boş aktarılacak. Yukarıdaki eşleştirmeden 3 soru sütununu seçebilirsiniz.</p>';
+
   const gost = yeni.slice(0, 12);
   if (gost.length) {
-    // "Ücret cevabı" sütunu yalnızca dosyada o soru varsa gösterilir —
-    // dondurulmuş gıda dosyalarında boş bir sütun yer kaplamasın.
+    // "Ücret cevabı"/"Ambalaj cevapları" sütunları yalnızca dosyada o soru(lar)
+    // varsa gösterilir — diğer hizmet dosyalarında boş sütun yer kaplamasın.
     const cinSutun = IMP_ESLES.cinPaid != null || cinler.length > 0;
     h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
       '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Ürün</th><th>Tonaj</th><th>Bütçe</th>' +
-      (cinSutun ? '<th>Ücret cevabı</th>' : "") + '<th>Sınıf</th></tr></thead><tbody>' +
+      (cinSutun ? '<th>Ücret cevabı</th>' : "") +
+      (ambalajSutun ? '<th>Bambu</th><th>Hijyen</th><th>Ambalaj/paketleme</th>' : "") +
+      '<th>Sınıf</th></tr></thead><tbody>' +
       gost.map(l => '<tr>' +
         '<td>' + escapeHtml(l.company || "—") + '</td>' +
         '<td>' + escapeHtml(l.contact || "—") + '</td>' +
@@ -552,6 +576,9 @@ function impOnizle() {
         '<td>' + (l._tonajTanindi ? escapeHtml(l.tonnage || "—") : '⚠️ ' + escapeHtml(l._tonajHam)) + '</td>' +
         '<td>' + (l._butceTanindi ? escapeHtml(l.budget || "—") : '⚠️ ' + escapeHtml(l._butceHam)) + '</td>' +
         (cinSutun ? '<td>' + (l._cinPaidTanindi ? escapeHtml(l.cinPaid || "—") : '⚠️ ' + escapeHtml(l.cinPaid)) + '</td>' : "") +
+        (ambalajSutun ? '<td>' + escapeHtml(l.ambalajBambu || "—") + '</td>' +
+          '<td>' + escapeHtml(l.ambalajHijyen || "—") + '</td>' +
+          '<td>' + escapeHtml(l.ambalajPaketleme || "—") + '</td>' : "") +
         '<td>' + escapeHtml(l.klass || "—") + '</td>' +
       '</tr>').join("") + '</tbody></table></div>';
     if (yeni.length > gost.length)
@@ -618,6 +645,9 @@ async function impCalistir() {
       // Çin hizmetindeki ücret sorusunun cevabı. Kolon henüz açılmamışsa
       // sbAdminInsertMany bu alanı düşürüp tekrar dener (bkz. SB_YENI_KOLONLAR).
       cin_paid: l.cinPaid || null,
+      ambalaj_bambu: l.ambalajBambu || null,
+      ambalaj_hijyen: l.ambalajHijyen || null,
+      ambalaj_paketleme: l.ambalajPaketleme || null,
       // Kolon adı "status" (lead_status DEĞİL): admin.js yeni CRM alanlarını
       // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
       // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.
