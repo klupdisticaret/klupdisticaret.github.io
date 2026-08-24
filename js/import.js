@@ -28,6 +28,15 @@ const IMP_ALANLAR = [
   { key: "ambalajBambu",     ad: "Bambu ambalaj cevabı",     ipuclari: ["bambu"] },
   { key: "ambalajHijyen",    ad: "Hijyen malzemesi cevabı",  ipuclari: ["hijyen", "temizlik hijyen"] },
   { key: "ambalajPaketleme", ad: "Ambalaj/paketleme cevabı", ipuclari: ["ambalaj ve paketleme", "paketleme"] },
+  // Çin'den Nalburiye ve İnşaat Hırdavatı hizmetinin bütçe DIŞINDAKİ 2 sorusu
+  // (bütçe zaten aşağıdaki genel "budget" alanıyla eşleşir — bu hizmette sınıfı
+  // tonaj yerine bütçe cevabı belirler, bkz. scoring.js). İpuçları birden çok
+  // kelimeli seçildi ki "group"/"products" alanlarının kısa ipuçlarını yenip
+  // doğru sütuna otursun (impSkor uzun ipucuna daha yüksek puan verir).
+  { key: "nalburiyeKategori", ad: "Nalburiye — ana ürün grubu",
+    ipuclari: ["ana ürün grubu", "hangi ana ürün", "ürün grubu ile ilgileniyor"] },
+  { key: "nalburiyeUrun",     ad: "Nalburiye — ürün detayı",
+    ipuclari: ["ilgilendiğiniz ürün", "kısaca yazınız", "ürünü veya ürünleri"] },
   { key: "phone",      ad: "Telefon",      ipuclari: ["phone number", "phone", "telefon", "gsm", "cep", "tel", "numara"] },
   { key: "email",      ad: "E-posta",      ipuclari: ["email", "e posta", "eposta", "e mail", "mail"] },
   { key: "location",   ad: "Şehir",        ipuclari: ["city", "şehir", "şehr", "il", "location", "konum", "bulunduğunuz"] },
@@ -416,6 +425,8 @@ function impSatirdanLead(satir) {
     ambalajBambu: al("ambalajBambu"),
     ambalajHijyen: al("ambalajHijyen"),
     ambalajPaketleme: al("ambalajPaketleme"),
+    nalburiyeKategori: al("nalburiyeKategori"),
+    nalburiyeUrun: al("nalburiyeUrun"),
   };
   const c = (typeof classifyLead === "function") ? classifyLead(state) : {};
   return {
@@ -451,6 +462,8 @@ const IMP_TAMAMLANABILIR = [
   ["ambalajBambu",     "ambalaj_bambu"],
   ["ambalajHijyen",    "ambalaj_hijyen"],
   ["ambalajPaketleme", "ambalaj_paketleme"],
+  ["nalburiyeKategori", "nalburiye_kategori"],
+  ["nalburiyeUrun",     "nalburiye_urun"],
 ];
 
 function impEksikleri(dosyaLead, kayit) {
@@ -557,15 +570,28 @@ function impOnizle() {
     h += '<p class="fn-hint">⚠️ Ambalaj sorularının hiçbiri eşleşmedi — ' + ambalajler.length +
       ' leadin 3 cevabı da boş aktarılacak. Yukarıdaki eşleştirmeden 3 soru sütununu seçebilirsiniz.</p>';
 
+  // Nalburiye leadleri: sınıf BÜTÇE cevabından geliyor (genel "budget" alanı),
+  // o yüzden Çin'deki kadar kritik bir uyarı gerekmiyor — 2 bilgi sorusu için
+  // Ambalaj'daki gibi tek satırlık ipucu yeter.
+  const nalburiyeler = yeni.filter(l => l.group === "nalburiye");
+  const nalburiyeSutun = IMP_ESLES.nalburiyeKategori != null || IMP_ESLES.nalburiyeUrun != null;
+  if (nalburiyeler.length && !nalburiyeSutun)
+    h += '<p class="fn-hint">⚠️ Nalburiye sorularının hiçbiri eşleşmedi — ' + nalburiyeler.length +
+      ' leadin 2 cevabı da boş aktarılacak. Yukarıdaki eşleştirmeden soru sütunlarını seçebilirsiniz.</p>';
+  const nalburiyeButcesiz = nalburiyeler.filter(l => !l.budget).length;
+  if (nalburiyeButcesiz)
+    h += '<p class="fn-hint">⚠️ ' + nalburiyeButcesiz + ' Nalburiye leadinde bütçe cevabı tanınamadı — sınıfları boş kalır (bütçe bu hizmette tonaj yerine sınıfı belirliyor).</p>';
+
   const gost = yeni.slice(0, 12);
   if (gost.length) {
-    // "Ücret cevabı"/"Ambalaj cevapları" sütunları yalnızca dosyada o soru(lar)
-    // varsa gösterilir — diğer hizmet dosyalarında boş sütun yer kaplamasın.
+    // "Ücret cevabı"/"Ambalaj cevapları"/"Nalburiye cevapları" sütunları yalnızca
+    // dosyada o soru(lar) varsa gösterilir — diğer hizmet dosyalarında boş sütun yer kaplamasın.
     const cinSutun = IMP_ESLES.cinPaid != null || cinler.length > 0;
     h += '<div class="table-wrap" style="margin-top:12px"><table><thead><tr>' +
       '<th>Firma</th><th>Yetkili</th><th>Telefon</th><th>Grup</th><th>Ürün</th><th>Tonaj</th><th>Bütçe</th>' +
       (cinSutun ? '<th>Ücret cevabı</th>' : "") +
       (ambalajSutun ? '<th>Bambu</th><th>Hijyen</th><th>Ambalaj/paketleme</th>' : "") +
+      (nalburiyeSutun ? '<th>Ana ürün grubu</th><th>Ürün detayı</th>' : "") +
       '<th>Sınıf</th></tr></thead><tbody>' +
       gost.map(l => '<tr>' +
         '<td>' + escapeHtml(l.company || "—") + '</td>' +
@@ -579,6 +605,8 @@ function impOnizle() {
         (ambalajSutun ? '<td>' + escapeHtml(l.ambalajBambu || "—") + '</td>' +
           '<td>' + escapeHtml(l.ambalajHijyen || "—") + '</td>' +
           '<td>' + escapeHtml(l.ambalajPaketleme || "—") + '</td>' : "") +
+        (nalburiyeSutun ? '<td>' + escapeHtml(l.nalburiyeKategori || "—") + '</td>' +
+          '<td>' + escapeHtml(l.nalburiyeUrun || "—") + '</td>' : "") +
         '<td>' + escapeHtml(l.klass || "—") + '</td>' +
       '</tr>').join("") + '</tbody></table></div>';
     if (yeni.length > gost.length)
@@ -648,6 +676,8 @@ async function impCalistir() {
       ambalaj_bambu: l.ambalajBambu || null,
       ambalaj_hijyen: l.ambalajHijyen || null,
       ambalaj_paketleme: l.ambalajPaketleme || null,
+      nalburiye_kategori: l.nalburiyeKategori || null,
+      nalburiye_urun: l.nalburiyeUrun || null,
       // Kolon adı "status" (lead_status DEĞİL): admin.js yeni CRM alanlarını
       // lead_status'a yazmaya çalışıyor ama o kolon Supabase'de yok. Buradan
       // lead_status gönderilirse PGRST204 ile TÜM içe aktarma başarısız olur.

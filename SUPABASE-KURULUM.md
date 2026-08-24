@@ -53,6 +53,13 @@ alter table public.leads add column if not exists ambalaj_bambu text;
 alter table public.leads add column if not exists ambalaj_hijyen text;
 alter table public.leads add column if not exists ambalaj_paketleme text;
 
+-- Çin'den Nalburiye ve İnşaat Hırdavatı: bütçe DIŞINDA 2 ayrı soru var,
+-- ikisinin cevabı da ayrı kolonda saklanır. Bütçe sorusu zaten var olan
+-- "budget" kolonunu kullanır — Ambalaj'ın aksine bu hizmette otomatik
+-- sınıflandırma (VIP/Sıcak/Takip/Düşük) VAR, ama tonaj yerine BÜTÇE cevabına göre.
+alter table public.leads add column if not exists nalburiye_kategori text;
+alter table public.leads add column if not exists nalburiye_urun text;
+
 -- Güvenlik (Row Level Security) açık
 alter table public.leads enable row level security;
 

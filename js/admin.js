@@ -97,11 +97,12 @@ const GROUP_FILTERS = [
   { key: "hepsi",    label: "🧺 Hepsi" },
   { key: "cin",      label: "🏮 Çin'den Ürün Getirme" },  // ayrı hizmet (dondurulmuş gıda değil)
   { key: "ambalaj",  label: "📦 Ambalaj Sarf Malzemeleri" },  // ayrı hizmet; 3 soru/cevap, sınıflandırma yok
+  { key: "nalburiye", label: "🔧 Çin'den Nalburiye ve İnşaat Hırdavatı" },  // ayrı hizmet; bütçe + 2 bilgi sorusu, bütçeye göre sınıflandırma VAR
   { key: "yok",      label: "Belirtilmemiş" },   // sayısı 0 ise gizlenir
 ];
 // Tabloda ve grup sütununda gösterilecek kısa etiketler
 // (Not: 🫘 ❔ 🇨🇳 Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
-const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi", cin:"🏮 Çin", ambalaj:"📦 Ambalaj" };
+const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi", cin:"🏮 Çin", ambalaj:"📦 Ambalaj", nalburiye:"🔧 Nalburiye" };
 
 /* Ambalaj Sarf Malzemeleri hizmetinin 3 sorusu. Sıra sabit: kartta, tabloda ve
    içe aktarma eşleştirmesinde hep bu sırayla gösterilir. */
@@ -109,6 +110,13 @@ const AMBALAJ_SORULAR = [
   { key: "ambalajBambu",     soru: "Hangi bambu sarf ambalaj malzemelerini getirmek istiyorsunuz?" },
   { key: "ambalajHijyen",    soru: "Hangi temizlik hijyen sarf malzemelerini getirmek istiyorsunuz?" },
   { key: "ambalajPaketleme", soru: "Hangi ambalaj ve paketleme malzemelerini getirmek istiyorsunuz?" },
+];
+
+/* Nalburiye hizmetinin bütçe DIŞINDAKİ 2 bilgi amaçlı sorusu (bütçe zaten
+   normal "Bütçe" alanı — sınıflandırmayı o belirliyor, bkz. scoring.js). */
+const NALBURIYE_SORULAR = [
+  { key: "nalburiyeKategori", soru: "Hangi ana ürün grubu ile ilgileniyorsunuz?" },
+  { key: "nalburiyeUrun",     soru: "İlgilendiğiniz ürünü veya ürünleri kısaca yazınız." },
 ];
 // Geçerli grup/hizmet anahtarları ("tumu" ve "yok" sanaldır, listede yer almaz)
 const GROUP_KEYS = GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok").map(g => g.key);
@@ -214,6 +222,9 @@ function rowToLead(r) {
     ambalajBambu: r.ambalaj_bambu || "",
     ambalajHijyen: r.ambalaj_hijyen || "",
     ambalajPaketleme: r.ambalaj_paketleme || "",
+    // Nalburiye hizmetinin bütçe dışındaki 2 sorusunun cevabı (kolon yoksa boş)
+    nalburiyeKategori: r.nalburiye_kategori || "",
+    nalburiyeUrun: r.nalburiye_urun || "",
   };
 }
 function localLeads() {
@@ -225,6 +236,7 @@ function localLeads() {
         cinPaid: l.cinPaid || "",
         ambalajBambu: l.ambalajBambu || "", ambalajHijyen: l.ambalajHijyen || "",
         ambalajPaketleme: l.ambalajPaketleme || "",
+        nalburiyeKategori: l.nalburiyeKategori || "", nalburiyeUrun: l.nalburiyeUrun || "",
         leadGroup: l.leadGroup, waShown: l.showWhatsapp, meetingShown: l.showMeeting },
         l, { status: normStatus(l.status) }));
   } catch (e) { return []; }
@@ -453,7 +465,7 @@ function renderTable(leads) {
   const head = `<tr>
     <th class="c-sel"><input type="checkbox" id="selAll" title="Görünen tümünü seç" aria-label="Görünen tümünü seç"></th>
     <th>Tarih</th><th>Grup</th><th>Firma</th><th>Telefon numarası</th>
-    <th>Tonaj / Ücret / Ambalaj cevabı</th>
+    <th>Tonaj / Ücret / Ambalaj / Nalburiye cevabı</th>
     <th class="sortable${classSort ? " is-sorted" : ""}" id="thSinif" tabindex="0" role="button"
         title="Sınıfa göre sırala">Sınıf <span class="ok">${ok}</span></th>
     <th>Durum</th><th>Sonraki takip</th><th>Sil</th></tr>`;
@@ -477,7 +489,7 @@ function renderTable(leads) {
     <td data-label="Grup">${groupCell(l)}</td>
     <td data-label="Firma">${firmaCell(l)}</td>
     <td data-label="Telefon numarası">${telefonCell(l)}</td>
-    <td data-label="${leadGroupOf(l) === "cin" ? "Ücret cevabı" : leadGroupOf(l) === "ambalaj" ? "Ambalaj cevabı" : "Tonaj"}">${tonajCell(l)}</td>
+    <td data-label="${leadGroupOf(l) === "cin" ? "Ücret cevabı" : leadGroupOf(l) === "ambalaj" ? "Ambalaj cevabı" : leadGroupOf(l) === "nalburiye" ? "Nalburiye cevabı" : "Tonaj"}">${tonajCell(l)}</td>
     <td data-label="Sınıf">${klassCell(l)}</td>
     <td data-label="Durum"><span class="status-badge ${statusClass(l.leadStatus)}">${escapeHtml(l.leadStatus)}</span></td>
     <td data-label="Sonraki takip">${followCell(l.followUpDate)}</td>
@@ -638,6 +650,19 @@ function ambalajCevapKutusu(lead) {
   return '<div style="grid-column:1/-1" class="ambalaj-box">' + kutular + "</div>";
 }
 
+/* Nalburiye kartında bütçe dışındaki 2 soru da kendi kutusunda gösterilir
+   (Ambalaj'la aynı desen). Bütçe ayrı bir kv alanı olarak kalır — burada
+   tekrar edilmez — çünkü sınıflandırmayı bütçe belirliyor (scoring.js). */
+function nalburiyeCevapKutusu(lead) {
+  const kutular = NALBURIYE_SORULAR.map(s => {
+    const cevap = String(lead[s.key] || "").trim();
+    return '<div class="nalburiye-q"><span>' + escapeHtml(s.soru) + "</span>" +
+      (cevap ? "<b>" + escapeHtml(cevap) + "</b>" : '<b class="due-none">Kayıtlı değil</b>') +
+      "</div>";
+  }).join("");
+  return '<div style="grid-column:1/-1" class="nalburiye-box">' + kutular + "</div>";
+}
+
 function openCard(lead) {
   document.getElementById("cardTitle").textContent = lead.company || lead.contact || "Müşteri Kartı";
   document.getElementById("cardRef").textContent =
@@ -655,6 +680,7 @@ function openCard(lead) {
      değiştiyse yeniden hesaplanır (bkz. saveCard). */
   const cinLead = leadGroupOf(lead) === "cin";
   const ambalajLead = leadGroupOf(lead) === "ambalaj";
+  const nalburiyeLead = leadGroupOf(lead) === "nalburiye";
   const cinKey  = typeof cinPaidKey === "function" ? cinPaidKey(lead.cinPaid) : "";
   const cinAlan = !cinLead ? "" : `
       <div class="field full"><label class="field-label">Ücretli hizmet cevabı
@@ -677,10 +703,10 @@ function openCard(lead) {
       ${kv("Şehir", lead.location)}
       ${kv("Liman", lead.port)}
       ${kv("Girilen ürünler", (lead.products || []).join(", "))}
-      ${cinLead ? cinCevapKutusu(lead) : ambalajLead ? ambalajCevapKutusu(lead) : kv("Tonaj", lead.tonnage)}
+      ${cinLead ? cinCevapKutusu(lead) : ambalajLead ? ambalajCevapKutusu(lead) : nalburiyeLead ? nalburiyeCevapKutusu(lead) : kv("Tonaj", lead.tonnage)}
       ${(cinLead || ambalajLead) ? "" : kv("Bütçe", lead.budget)}
-      ${ambalajLead ? "" : kv("İthalat zamanı", lead.timing)}
-      ${(cinLead || ambalajLead) ? "" : kv("Daha önce ithalat?", lead.experience)}
+      ${(ambalajLead || nalburiyeLead) ? "" : kv("İthalat zamanı", lead.timing)}
+      ${(cinLead || ambalajLead || nalburiyeLead) ? "" : kv("Daha önce ithalat?", lead.experience)}
       ${kv("Lead grubu", lead.leadGroup)}
       ${kv("Lead etiketi", lead.klass)}
       ${kv("Lead puanı", lead.score == null ? "-" : String(lead.score))}
@@ -804,7 +830,8 @@ function exportJSON() { download("leadler.json", JSON.stringify(CACHE, null, 2),
 function exportCSV() {
   const cols = ["createdAt","refNo","company","contact","phone","whatsapp","location","port",
                 "group","products","tonnage","budget","timing","experience","cinPaid",
-                "ambalajBambu","ambalajHijyen","ambalajPaketleme","leadGroup","klass","score",
+                "ambalajBambu","ambalajHijyen","ambalajPaketleme",
+                "nalburiyeKategori","nalburiyeUrun","leadGroup","klass","score",
                 "selectedSlot","leadStatus","callResult","nextAction","followUpDate","closeReason","adminNote"];
   const rows = CACHE.map(l => cols.map(c => {
     let v = l[c];
@@ -1096,6 +1123,7 @@ function groupCell(l) {
 function tonajCell(l) {
   const g = leadGroupOf(l);
   if (g === "ambalaj") return ambalajOzetHucre(l);
+  if (g === "nalburiye") return nalburiyeOzetHucre(l);
   if (g !== "cin") return escapeHtml(l.tonnage);
   const ham  = String(l.cinPaid || "").trim();
   const info = typeof cinPaidInfo === "function" ? cinPaidInfo(cinPaidKey(ham)) : null;
@@ -1118,6 +1146,17 @@ function ambalajOzetHucre(l) {
   if (!cevaplar.some(Boolean))
     return '<span class="due-none" title="Ambalaj sorularının cevabı kayıtlı değil">—</span>';
   const baslik = AMBALAJ_SORULAR.map((s, i) => (i + 1) + ") " + s.soru + ": " + (cevaplar[i] || "—")).join("\n");
+  const ozet = cevaplar.map(c => ambalajKisa(c, 18)).filter(Boolean).join(" · ");
+  return '<span title="' + escapeHtml(baslik) + '">' + escapeHtml(ozet) + "</span>";
+}
+
+/* Nalburiye lead'inde bütçe dışındaki 2 cevap tek hücrede kısa özet olarak
+   gösterilir (ambalajOzetHucre ile aynı desen). */
+function nalburiyeOzetHucre(l) {
+  const cevaplar = NALBURIYE_SORULAR.map(s => String(l[s.key] || "").trim());
+  if (!cevaplar.some(Boolean))
+    return '<span class="due-none" title="Nalburiye sorularının cevabı kayıtlı değil">—</span>';
+  const baslik = NALBURIYE_SORULAR.map((s, i) => (i + 1) + ") " + s.soru + ": " + (cevaplar[i] || "—")).join("\n");
   const ozet = cevaplar.map(c => ambalajKisa(c, 18)).filter(Boolean).join(" · ");
   return '<span title="' + escapeHtml(baslik) + '">' + escapeHtml(ozet) + "</span>";
 }

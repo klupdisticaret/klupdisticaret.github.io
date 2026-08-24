@@ -123,7 +123,8 @@ async function sbDeleteAvailability(date) {
 /* Kurulum SQL'i güncellenmeden de çalışsın diye: bu kolonlar tabloda yoksa
    istek PGRST204 ile TÜM işlemi düşürür. Hata görülünce bunlar atılıp
    yeniden denenir; kayıt gider, yalnızca yeni alan boş kalır. */
-const SB_YENI_KOLONLAR = ["cin_paid", "ambalaj_bambu", "ambalaj_hijyen", "ambalaj_paketleme"];
+const SB_YENI_KOLONLAR = ["cin_paid", "ambalaj_bambu", "ambalaj_hijyen", "ambalaj_paketleme",
+  "nalburiye_kategori", "nalburiye_urun"];
 const sbKolonHatasi = (msg) => /column|schema cache|PGRST204/i.test(String(msg || ""));
 function sbKolonlariAt(obj) {
   const kopya = { ...obj };
