@@ -96,7 +96,7 @@ const GROUP_FILTERS = [
   { key: "bakliyat", label: "🥜 Bakliyat" },
   { key: "hepsi",    label: "🧺 Hepsi" },
   { key: "cin",      label: "🏮 Çin'den Ürün Getirme" },  // ayrı hizmet (dondurulmuş gıda değil)
-  { key: "ambalaj",  label: "📦 Ambalaj Sarf Malzemeleri" },  // ayrı hizmet; 3 soru/cevap, sınıflandırma yok
+  { key: "ambalaj",  label: "📦 Ambalaj Sarf Malzemeleri" },  // ayrı hizmet; 3 bilgi sorusu + bütçeye göre sınıflandırma VAR
   { key: "nalburiye", label: "🔧 Çin'den Nalburiye ve İnşaat Hırdavatı" },  // ayrı hizmet; bütçe + 2 bilgi sorusu, bütçeye göre sınıflandırma VAR
   { key: "yok",      label: "Belirtilmemiş" },   // sayısı 0 ise gizlenir
 ];
@@ -638,8 +638,10 @@ function cinCevapKutusu(lead) {
 }
 
 /* Ambalaj Sarf Malzemeleri kartında 3 soru da kendi kutusunda, soru metni +
-   ham cevabıyla gösterilir. Çin'in aksine burada sınıflandırma yok, o yüzden
-   düzenlenebilir bir açılır liste de yok — salt bilgi amaçlı. */
+   ham cevabıyla gösterilir. Bütçe ayrı bir kv alanı olarak kalır — burada
+   tekrar edilmez — çünkü sınıflandırmayı bütçe belirliyor (scoring.js,
+   nalburiyeCevapKutusu ile aynı desen). Bu 3 soru salt bilgi amaçlı kalır,
+   o yüzden düzenlenebilir bir açılır liste yok. */
 function ambalajCevapKutusu(lead) {
   const kutular = AMBALAJ_SORULAR.map(s => {
     const cevap = String(lead[s.key] || "").trim();
@@ -704,7 +706,7 @@ function openCard(lead) {
       ${kv("Liman", lead.port)}
       ${kv("Girilen ürünler", (lead.products || []).join(", "))}
       ${cinLead ? cinCevapKutusu(lead) : ambalajLead ? ambalajCevapKutusu(lead) : nalburiyeLead ? nalburiyeCevapKutusu(lead) : kv("Tonaj", lead.tonnage)}
-      ${(cinLead || ambalajLead) ? "" : kv("Bütçe", lead.budget)}
+      ${cinLead ? "" : kv("Bütçe", lead.budget)}
       ${(ambalajLead || nalburiyeLead) ? "" : kv("İthalat zamanı", lead.timing)}
       ${(cinLead || ambalajLead || nalburiyeLead) ? "" : kv("Daha önce ithalat?", lead.experience)}
       ${kv("Lead grubu", lead.leadGroup)}

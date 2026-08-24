@@ -562,13 +562,17 @@ function impOnizle() {
   if (cinAnlasilmaz)
     h += '<p class="fn-hint">⚠️ ' + cinAnlasilmaz + ' Çin leadinde cevap <b>anlaşılamadı</b> (aşağıdaki tabloda ⚠️ ile işaretli). Bunlar da sınıfsız aktarılır.</p>';
 
-  // Ambalaj leadleri: sınıflandırma yok, cevaplar sadece bilgi amaçlı — eksik
-  // eşleşme uyarısı Çin'deki kadar kritik değil, o yüzden tek satırlık ipucu yeter.
+  // Ambalaj leadleri: sınıf BÜTÇE cevabından geliyor (genel "budget" alanı),
+  // 3 soru (bambu/hijyen/paketleme) salt bilgi amaçlı — eksik eşleşme uyarısı
+  // Çin'deki kadar kritik değil, o yüzden tek satırlık ipucu yeter.
   const ambalajler = yeni.filter(l => l.group === "ambalaj");
   const ambalajSutun = IMP_ESLES.ambalajBambu != null || IMP_ESLES.ambalajHijyen != null || IMP_ESLES.ambalajPaketleme != null;
   if (ambalajler.length && !ambalajSutun)
     h += '<p class="fn-hint">⚠️ Ambalaj sorularının hiçbiri eşleşmedi — ' + ambalajler.length +
       ' leadin 3 cevabı da boş aktarılacak. Yukarıdaki eşleştirmeden 3 soru sütununu seçebilirsiniz.</p>';
+  const ambalajButcesiz = ambalajler.filter(l => !l.budget).length;
+  if (ambalajButcesiz)
+    h += '<p class="fn-hint">⚠️ ' + ambalajButcesiz + ' Ambalaj leadinde bütçe cevabı tanınamadı — sınıfları boş kalır (bütçe bu hizmette sınıfı belirliyor).</p>';
 
   // Nalburiye leadleri: sınıf BÜTÇE cevabından geliyor (genel "budget" alanı),
   // o yüzden Çin'deki kadar kritik bir uyarı gerekmiyor — 2 bilgi sorusu için

@@ -107,30 +107,20 @@ function classifyCin(state) {
   };
 }
 
-/* Ambalaj Sarf Malzemeleri: 3 ayrı soru var ama hiçbiri sınıf/puan belirlemiyor
-   (bilinçli tercih — cevaplar admin panelinde sadece bilgi amaçlı gösterilir).
-   Tonaj sorulmadığı için Çin hizmeti gibi tonaj tablosunun dışında tutulur. */
-function classifyAmbalaj(state) {
-  return {
-    klass: "", group: null, label: "", score: 0, level: 0,
-    showWhatsapp: false, showMeeting: false, message: GROUP_MESSAGES.A,
-  };
-}
-
-/* Çin'den Nalburiye ve İnşaat Hırdavatı: 3 soru var (bütçe + 2 bilgi amaçlı
-   soru) ama tonaj sorulmuyor. Ambalaj'ın aksine burada sınıflandırma VAR —
-   sadece tonaj yerine BÜTÇE cevabı belirleyici. Harf/etiket isimleri tonaj
-   tablosuyla aynı ki VIP/Sıcak/Takip/Düşük sayaçları ve rozetleri değişmeden
-   çalışsın. Bu leadler de Çin/Ambalaj gibi Meta reklamından geliyor, siteyi
-   hiç görmüyor — o yüzden WhatsApp/toplantı görünürlüğü hep kapalı. */
-const NALBURIYE_BUDGET = {
+/* Ambalaj Sarf Malzemeleri ve Çin'den Nalburiye/İnşaat Hırdavatı: tonaj
+   sorulmayan bu hizmetlerde sınıf, "Bu ithalat için yaklaşık bütçeniz nedir?"
+   sorusunun cevabından (genel "budget" alanı) gelir. Harf/etiket isimleri
+   tonaj tablosuyla aynı ki VIP/Sıcak/Takip/Düşük sayaçları ve rozetleri
+   değişmeden çalışsın. Bu leadler Meta reklamından geliyor, siteyi hiç
+   görmüyor — o yüzden WhatsApp/toplantı görünürlüğü hep kapalı. */
+const BUDGET_ONLY_CLASS = {
   "10.000 USD altı":     { letter: "A", klass: "Düşük Öncelikli Lead", score: 10 },
   "10.000 – 25.000 USD": { letter: "B", klass: "Takip Edilecek Lead",  score: 35 },
   "25.000 – 50.000 USD": { letter: "C", klass: "Sıcak Lead",           score: 65 },
   "50.000 USD üzeri":    { letter: "D", klass: "VIP Lead",             score: 90 },
 };
-function classifyNalburiye(state) {
-  const info = NALBURIYE_BUDGET[state.budget];
+function classifyByBudget(state) {
+  const info = BUDGET_ONLY_CLASS[state.budget];
   return {
     klass: info ? info.klass : "",
     group: info ? info.letter : null,
@@ -143,13 +133,19 @@ function classifyNalburiye(state) {
   };
 }
 
+// Ambalaj'ın 3 sorusu (bambu/hijyen/paketleme) salt bilgi amaçlı kalır, sınıfa girmez.
+function classifyAmbalaj(state) { return classifyByBudget(state); }
+
+// Nalburiye'nin bütçe DIŞINDAKİ 2 sorusu da salt bilgi amaçlı, sınıfa girmez.
+function classifyNalburiye(state) { return classifyByBudget(state); }
+
 /* Lead'i sınıflandırır + görünürlük kurallarını döndürür.
    Görünürlük, tonaj x bütçe matrisine (VISIBILITY) göre hücre-hücre belirlenir;
    "ne zaman" ve "daha önce" sorularının TÜM seçenekleri geçerlidir (engellemez).
    Seviye 0 -> sadece kayıt | 1 -> WhatsApp | 2 -> WhatsApp + toplantı
    { klass, group, label, score, level, showWhatsapp, showMeeting, message }
-   Çin ve Ambalaj hizmetleri bu matrisin dışındadır (bkz. classifyCin, classifyAmbalaj).
-   Nalburiye de dışındadır ama BÜTÇEYE göre sınıflanır (bkz. classifyNalburiye). */
+   Çin bu matrisin dışındadır (bkz. classifyCin). Ambalaj ve Nalburiye de
+   dışındadır, ikisi de BÜTÇEYE göre sınıflanır (bkz. classifyByBudget). */
 function classifyLead(state) {
   if (String(state.group || "") === "cin") return classifyCin(state);
   if (String(state.group || "") === "ambalaj") return classifyAmbalaj(state);
