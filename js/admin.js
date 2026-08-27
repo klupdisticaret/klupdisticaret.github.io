@@ -30,7 +30,7 @@ const RLS_UYARI =
 // Lead durumları (yeni CRM akışı)
 const STATUSES = [
   "Yeni lead", "İncelenecek", "WhatsApp gönderildi", "Cevap bekleniyor", "Ulaşılamadı", "Görüşme yapıldı",
-  "Teklif hazırlanıyor", "Teklif gönderildi", "Karar bekleniyor", "Siparişe döndü", "Kapatıldı",
+  "Potansiyel müşteri", "Teklif hazırlanıyor", "Teklif gönderildi", "Karar bekleniyor", "Siparişe döndü", "Kapatıldı",
 ];
 // Kart alanı seçenekleri
 const CALL_RESULTS  = ["Seçilmedi","Ulaşıldı","Ulaşılamadı","Meşgul / sonra","Geri aranacak","Yanlış numara","İlgilenmiyor"];
@@ -47,7 +47,8 @@ function normStatus(s) {
 function statusClass(s) {
   return {
     "Yeni lead":"ls-yeni", "İncelenecek":"ls-incele", "WhatsApp gönderildi":"ls-wa",
-    "Cevap bekleniyor":"ls-cevap", "Görüşme yapıldı":"ls-gorusme", "Teklif hazırlanıyor":"ls-thaz",
+    "Cevap bekleniyor":"ls-cevap", "Görüşme yapıldı":"ls-gorusme", "Potansiyel müşteri":"ls-potansiyel",
+    "Teklif hazırlanıyor":"ls-thaz",
     "Teklif gönderildi":"ls-tgon", "Karar bekleniyor":"ls-karar", "Siparişe döndü":"ls-siparis",
     "Ulaşılamadı":"ls-ulasilamaz",
     "Kapatıldı":"ls-kapali",
@@ -57,7 +58,7 @@ function statusClass(s) {
 function todayStr() { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 // Lead durumu filtreleri
-const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Cevap bekleniyor","Ulaşılamadı","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
+const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Potansiyel müşteri","Cevap bekleniyor","Ulaşılamadı","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
 // Aksiyon filtreleri (takip tarihine göre)
 const ACTION_FILTERS = ["Tüm aksiyonlar","Bugün takip edilecekler","Geciken takipler","Takip tarihi olmayanlar"];
 
