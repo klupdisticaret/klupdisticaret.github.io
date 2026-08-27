@@ -12,6 +12,8 @@ const pwErr = document.getElementById("pwErr");
 let CACHE = [];
 let activeStatus = "Tümü";
 let activeAction = "Tüm aksiyonlar";
+let activeCallResult = "Tümü";   // "Arama sonucu" filtresi (CALL_RESULT_FILTERS)
+let activeNextAction = "Tümü";   // "Sonraki aksiyon" filtresi (NEXT_ACTION_FILTERS)
 let activeGroup = "tumu";   // ürün grubu filtresi (aşağıdaki GROUP_FILTERS anahtarları)
 let activeClass = "tumu";   // sınıf filtresi (aşağıdaki CLASS_FILTERS anahtarları)
 let classSort = 0;          // 0 = tarihe göre, 1 = VIP üstte, -1 = Düşük üstte
@@ -35,6 +37,9 @@ const STATUSES = [
 // Kart alanı seçenekleri
 const CALL_RESULTS  = ["Seçilmedi","Ulaşıldı","Ulaşılamadı","Meşgul / sonra","Geri aranacak","Yanlış numara","İlgilenmiyor"];
 const NEXT_ACTIONS  = ["Seçilmedi","Ara","WhatsApp gönder","Teklif hazırla","Teklif gönder","Toplantı planla","Numune/evrak iste","Takibe al","Kapat"];
+// "Tüm Lead'ler" panelindeki filtre satırları (karttaki callResult / nextAction alanına göre süzer)
+const CALL_RESULT_FILTERS = ["Tümü", ...CALL_RESULTS];
+const NEXT_ACTION_FILTERS = ["Tümü", ...NEXT_ACTIONS];
 const CLOSE_REASONS = ["Seçilmedi","Fiyat yüksek","Rakip firmayı seçti","Zamanlama uygun değil","İlgilenmiyor","Ulaşılamadı","Bütçe yetersiz","Diğer"];
 
 // funnel'dan gelen eski status alanı için (geriye uyum; leadStatus'tan ayrı)
@@ -290,6 +295,8 @@ function matchActionFilter(l) {
   if (activeAction === "Takip tarihi olmayanlar") return !l.followUpDate;
   return true;
 }
+function matchCallResultFilter(l) { return activeCallResult === "Tümü" || (l.callResult || "Seçilmedi") === activeCallResult; }
+function matchNextActionFilter(l) { return activeNextAction === "Tümü" || (l.nextAction || "Seçilmedi") === activeNextAction; }
 function matchGroupFilter(l) { return activeGroup === "tumu" || leadGroupOf(l) === activeGroup; }
 function matchClassFilter(l) {
   if (activeClass === "tumu") return true;
@@ -298,7 +305,8 @@ function matchClassFilter(l) {
 }
 function getFiltered() {
   const list = CACHE.filter(l =>
-    matchStatusFilter(l) && matchActionFilter(l) && matchGroupFilter(l) && matchClassFilter(l));
+    matchStatusFilter(l) && matchActionFilter(l) && matchGroupFilter(l) && matchClassFilter(l)
+    && matchCallResultFilter(l) && matchNextActionFilter(l));
   // Sınıf sıralaması kapalıyken liste veritabanından geldiği gibi (yeniden eskiye) kalır.
   if (classSort !== 0) {
     list.sort((a, b) => {
@@ -325,6 +333,8 @@ function actionCount(name) {
   if (name === "Geciken takipler") return CACHE.filter(l => l.followUpDate && l.followUpDate < t).length;
   return CACHE.filter(l => !l.followUpDate).length;
 }
+function callResultCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => (l.callResult || "Seçilmedi") === name).length; }
+function nextActionCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => (l.nextAction || "Seçilmedi") === name).length; }
 
 /* --- Filtre butonları (durum + aksiyon) --- */
 function renderFilters() {
@@ -366,6 +376,34 @@ function renderFilters() {
       b.innerHTML = escapeHtml(label) + ` <span class="cnt">${n}</span>`;
       b.addEventListener("click", () => { activeClass = key; renderFilters(); renderTable(getFiltered()); });
       cf.appendChild(b);
+    });
+  }
+  const crf = document.getElementById("callResultFilters");
+  if (crf) {
+    crf.innerHTML = "";
+    CALL_RESULT_FILTERS.forEach(name => {
+      const n = callResultCount(name);
+      // Hiç kaydı olmayan seçenek yer kaplamasın (seçili ya da "Tümü" ise kalır)
+      if (n === 0 && name !== activeCallResult && name !== "Tümü") return;
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (name === activeCallResult ? " is-active" : "");
+      b.innerHTML = escapeHtml(name) + ` <span class="cnt">${n}</span>`;
+      b.addEventListener("click", () => { activeCallResult = name; renderFilters(); renderTable(getFiltered()); });
+      crf.appendChild(b);
+    });
+  }
+  const naf = document.getElementById("nextActionFilters");
+  if (naf) {
+    naf.innerHTML = "";
+    NEXT_ACTION_FILTERS.forEach(name => {
+      const n = nextActionCount(name);
+      // Hiç kaydı olmayan seçenek yer kaplamasın (seçili ya da "Tümü" ise kalır)
+      if (n === 0 && name !== activeNextAction && name !== "Tümü") return;
+      const b = document.createElement("button");
+      b.className = "filter-btn" + (name === activeNextAction ? " is-active" : "");
+      b.innerHTML = escapeHtml(name) + ` <span class="cnt">${n}</span>`;
+      b.addEventListener("click", () => { activeNextAction = name; renderFilters(); renderTable(getFiltered()); });
+      naf.appendChild(b);
     });
   }
   const af = document.getElementById("actionFilters");
