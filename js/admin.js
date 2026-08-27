@@ -736,9 +736,9 @@ function openCard(lead) {
     <p id="stMsg" style="margin:10px 0 0"></p>
   `;
 
-  const waNum = ((lead.whatsapp || lead.phone) || "").replace(/[^0-9]/g, "").replace(/^0/, "90");
+  const waNum = waNumber(lead.whatsapp || lead.phone);
   const waBtn = document.getElementById("stWa");
-  if (waNum.length >= 10) waBtn.href = "https://wa.me/" + waNum;
+  if (waNum.length >= 11) waBtn.href = "https://wa.me/" + waNum;
   else waBtn.style.display = "none";
 
   document.getElementById("stSave").addEventListener("click", () => saveCard(lead));
@@ -1098,6 +1098,23 @@ function telefonCell(l) {
   const ham = String(l.phone || l.whatsapp || "").trim();
   if (!ham) return '<span class="due-none" title="Numara kayıtlı değil">—</span>';
   return '<span class="tel-cell">' + escapeHtml(telefonBicim(ham)) + "</span>";
+}
+
+/* Lead'in telefon/WhatsApp numarasını wa.me'nin beklediği biçime çevirir:
+   ülke kodu + numara; artı, boşluk ve baştaki sıfır olmadan.
+   Eskiden yalnızca baştaki "0" -> "90" yapılıyordu. "0532…" doğru dönüşüyordu
+   ama "532…" / "553…" gibi başında sıfır olmadan girilen numaralar hiç
+   dokunulmadan geçiyor, WhatsApp da baştaki "55"i Brezilya ülke kodu (+55)
+   sanıp "numara bulunamadı" veriyordu. Artık 10 haneli ve 5 ile başlayan
+   (Türk cep) numaralara da "90" ekleniyor. Yurt dışı numaraları (ör. +49…)
+   ham haliyle bırakılır. */
+function waNumber(raw) {
+  let n = String(raw || "").replace(/\D/g, "");
+  if (!n) return "";
+  if (n.startsWith("00")) n = n.slice(2);              // 0090 553… -> 90 553…
+  if (n.startsWith("0"))  n = n.slice(1);              // 0553…     -> 553…
+  if (n.length === 10 && n[0] === "5") n = "90" + n;   // 553…      -> 90553… (asıl düzeltme)
+  return n;
 }
 
 /* Türkiye numarasını okunur yazar: 5321234567 -> 0532 123 45 67.
