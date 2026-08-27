@@ -29,7 +29,7 @@ const RLS_UYARI =
 
 // Lead durumları (yeni CRM akışı)
 const STATUSES = [
-  "Yeni lead", "İncelenecek", "WhatsApp gönderildi", "Cevap bekleniyor", "Ulaşılamadı", "Görüşme yapıldı",
+  "Yeni lead", "İncelenecek", "Whatsapptan bilgi gönderildi", "Cevap bekleniyor", "Ulaşılamadı", "Görüşme yapıldı",
   "Potansiyel müşteri", "Teklif hazırlanıyor", "Teklif gönderildi", "Karar bekleniyor", "Siparişe döndü", "Kapatıldı",
 ];
 // Kart alanı seçenekleri
@@ -43,10 +43,15 @@ function normStatus(s) {
   if (s === "Toplantı Planlandı") return "Toplantı planlandı";
   return s;
 }
+// Eski "WhatsApp gönderildi" lead durumu yeni ada çevrilir (geriye uyum)
+function normLeadStatus(s) {
+  if (s === "WhatsApp gönderildi" || s === "Whatsapptan gönderildi") return "Whatsapptan bilgi gönderildi";
+  return s || "İncelenecek";
+}
 // leadStatus -> renk sınıfı
 function statusClass(s) {
   return {
-    "Yeni lead":"ls-yeni", "İncelenecek":"ls-incele", "WhatsApp gönderildi":"ls-wa",
+    "Yeni lead":"ls-yeni", "İncelenecek":"ls-incele", "Whatsapptan bilgi gönderildi":"ls-wa",
     "Cevap bekleniyor":"ls-cevap", "Görüşme yapıldı":"ls-gorusme", "Potansiyel müşteri":"ls-potansiyel",
     "Teklif hazırlanıyor":"ls-thaz",
     "Teklif gönderildi":"ls-tgon", "Karar bekleniyor":"ls-karar", "Siparişe döndü":"ls-siparis",
@@ -58,7 +63,7 @@ function statusClass(s) {
 function todayStr() { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 // Lead durumu filtreleri
-const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Potansiyel müşteri","Cevap bekleniyor","Ulaşılamadı","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
+const STATUS_FILTERS = ["Tümü","Yeni lead","İncelenecek","Whatsapptan bilgi gönderildi","Potansiyel müşteri","Cevap bekleniyor","Ulaşılamadı","Teklif hazırlanıyor","Teklif gönderildi","Karar bekleniyor","Siparişe döndü","Kapatıldı"];
 // Aksiyon filtreleri (takip tarihine göre)
 const ACTION_FILTERS = ["Tüm aksiyonlar","Bugün takip edilecekler","Geciken takipler","Takip tarihi olmayanlar"];
 
@@ -212,7 +217,7 @@ function rowToLead(r) {
     waShown: r.wa_shown, meetingShown: r.meeting_shown,
     selectedSlot: r.selected_slot, status: normStatus(r.status),
     // Yeni CRM alanları (yoksa varsayılan — eski kayıtlar bozulmaz)
-    leadStatus: r.lead_status || "İncelenecek",
+    leadStatus: normLeadStatus(r.lead_status),
     callResult: r.call_result || "Seçilmedi",
     nextAction: r.next_action || "Seçilmedi",
     followUpDate: r.next_followup || "",
@@ -240,7 +245,7 @@ function localLeads() {
         ambalajPaketleme: l.ambalajPaketleme || "",
         nalburiyeKategori: l.nalburiyeKategori || "", nalburiyeUrun: l.nalburiyeUrun || "",
         leadGroup: l.leadGroup, waShown: l.showWhatsapp, meetingShown: l.showMeeting },
-        l, { status: normStatus(l.status) }));
+        l, { status: normStatus(l.status), leadStatus: normLeadStatus(l.leadStatus) }));
   } catch (e) { return []; }
 }
 
