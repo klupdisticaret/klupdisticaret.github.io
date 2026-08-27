@@ -96,7 +96,7 @@ const GROUP_FILTERS = [
   { key: "sebze",    label: "🥦 Dondurulmuş Sebze" },
   { key: "deniz",    label: "🐟 Dondurulmuş Deniz Ürünleri" },
   { key: "bakliyat", label: "🥜 Bakliyat" },
-  { key: "hepsi",    label: "🧺 Hepsi" },
+  { key: "hepsi",    label: "📦 Ambalaj 1" },   // etikette "Ambalaj 1"; veri anahtarı "hepsi" olarak korunuyor
   { key: "cin",      label: "🏮 Çin'den Ürün Getirme" },  // ayrı hizmet (dondurulmuş gıda değil)
   { key: "ambalaj",  label: "📦 Ambalaj Sarf Malzemeleri" },  // ayrı hizmet; 3 bilgi sorusu + bütçeye göre sınıflandırma VAR
   { key: "nalburiye", label: "🔧 Çin'den Nalburiye ve İnşaat Hırdavatı" },  // ayrı hizmet; bütçe + 2 bilgi sorusu, bütçeye göre sınıflandırma VAR
@@ -104,7 +104,7 @@ const GROUP_FILTERS = [
 ];
 // Tabloda ve grup sütununda gösterilecek kısa etiketler
 // (Not: 🫘 ❔ 🇨🇳 Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
-const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"🧺 Hepsi", cin:"🏮 Çin", ambalaj:"📦 Ambalaj", nalburiye:"🔧 Nalburiye" };
+const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"📦 Ambalaj 1", cin:"🏮 Çin", ambalaj:"📦 Ambalaj", nalburiye:"🔧 Nalburiye" };
 
 /* Ambalaj Sarf Malzemeleri hizmetinin 3 sorusu. Sıra sabit: kartta, tabloda ve
    içe aktarma eşleştirmesinde hep bu sırayla gösterilir. */
@@ -328,7 +328,7 @@ function renderFilters() {
     gf.innerHTML = "";
     GROUP_FILTERS.forEach(({ key, label }) => {
       const n = groupCount(key);
-      // "Belirtilmemiş" ve "Hepsi" butonları, o grupta lead yoksa yer kaplamasın.
+      // "Belirtilmemiş" ve "Ambalaj 1" (key: "hepsi") butonları, o grupta lead yoksa yer kaplamasın.
       // (Ama seçili durumdaysa gizlemeyiz; yoksa aktif filtre görünmez olur.)
       if (n === 0 && key !== activeGroup && (key === "yok" || key === "hepsi")) return;
       const b = document.createElement("button");
