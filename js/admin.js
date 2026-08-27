@@ -275,15 +275,22 @@ async function renderAll() {
   // Artık var olmayan (silinmiş) leadler seçimde asılı kalmasın
   const mevcut = new Set(CACHE.map(leadKey));
   SELECTED.forEach(k => { if (!mevcut.has(k)) SELECTED.delete(k); });
-  renderStats(CACHE);
-  renderStatusDist(CACHE);
-  renderClassDist(CACHE);
-  renderProductDist(CACHE);
-  renderFieldDist("distTonnage", CACHE, "tonnage");
-  renderFieldDist("distBudget", CACHE, "budget");
+  renderPanels();
   renderFilters();
   renderTable(getFiltered());
   renderFunnel();
+}
+
+/* Üst panel: özet kartları + dağılım çubukları. Hepsi seçili ürün grubuna
+   (statsScope) göre çizilir; ürün grubu değişince yeniden çağrılır. */
+function renderPanels() {
+  const s = statsScope();
+  renderStats(s);
+  renderStatusDist(s);
+  renderClassDist(s);
+  renderProductDist(s);
+  renderFieldDist("distTonnage", s, "tonnage");
+  renderFieldDist("distBudget", s, "budget");
 }
 
 function matchStatusFilter(l) { return activeStatus === "Tümü" || l.leadStatus === activeStatus; }
@@ -298,6 +305,11 @@ function matchActionFilter(l) {
 function matchCallResultFilter(l) { return activeCallResult === "Tümü" || (l.callResult || "Seçilmedi") === activeCallResult; }
 function matchNextActionFilter(l) { return activeNextAction === "Tümü" || (l.nextAction || "Seçilmedi") === activeNextAction; }
 function matchGroupFilter(l) { return activeGroup === "tumu" || leadGroupOf(l) === activeGroup; }
+/* Üst panelin (özet kartları + dağılım çubukları + durum/sınıf/aksiyon filtre
+   rozetleri) kapsamı: yalnızca seçili ÜRÜN GRUBUNUN leadleri. Grup "Tümü" ise
+   tüm leadler. Ürün grubu butonlarının kendi sayıları (groupCount) bundan
+   etkilenmez — orası grup büyüklüğünü göstermeye devam eder. */
+function statsScope() { return activeGroup === "tumu" ? CACHE : CACHE.filter(matchGroupFilter); }
 function matchClassFilter(l) {
   if (activeClass === "tumu") return true;
   const f = CLASS_FILTERS.find(x => x.key === activeClass);
@@ -319,22 +331,25 @@ function getFiltered() {
   return list;
 }
 
-function statusCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => l.leadStatus === name).length; }
+// Bu rozet sayıları seçili ürün grubu içinde sayılır (statsScope); groupCount hariç.
+function statusCount(name) { const s = statsScope(); return name === "Tümü" ? s.length : s.filter(l => l.leadStatus === name).length; }
 function groupCount(key) { return key === "tumu" ? CACHE.length : CACHE.filter(l => leadGroupOf(l) === key).length; }
 function classCount(key) {
-  if (key === "tumu") return CACHE.length;
+  const s = statsScope();
+  if (key === "tumu") return s.length;
   const f = CLASS_FILTERS.find(x => x.key === key);
-  return f ? CACHE.filter(l => (l.klass || "") === f.klass).length : 0;
+  return f ? s.filter(l => (l.klass || "") === f.klass).length : 0;
 }
 function actionCount(name) {
   const t = todayStr();
-  if (name === "Tüm aksiyonlar") return CACHE.length;
-  if (name === "Bugün takip edilecekler") return CACHE.filter(l => l.followUpDate === t).length;
-  if (name === "Geciken takipler") return CACHE.filter(l => l.followUpDate && l.followUpDate < t).length;
-  return CACHE.filter(l => !l.followUpDate).length;
+  const s = statsScope();
+  if (name === "Tüm aksiyonlar") return s.length;
+  if (name === "Bugün takip edilecekler") return s.filter(l => l.followUpDate === t).length;
+  if (name === "Geciken takipler") return s.filter(l => l.followUpDate && l.followUpDate < t).length;
+  return s.filter(l => !l.followUpDate).length;
 }
-function callResultCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => (l.callResult || "Seçilmedi") === name).length; }
-function nextActionCount(name) { return name === "Tümü" ? CACHE.length : CACHE.filter(l => (l.nextAction || "Seçilmedi") === name).length; }
+function callResultCount(name) { const s = statsScope(); return name === "Tümü" ? s.length : s.filter(l => (l.callResult || "Seçilmedi") === name).length; }
+function nextActionCount(name) { const s = statsScope(); return name === "Tümü" ? s.length : s.filter(l => (l.nextAction || "Seçilmedi") === name).length; }
 
 /* --- Filtre butonları (durum + aksiyon) --- */
 function renderFilters() {
@@ -349,7 +364,7 @@ function renderFilters() {
       const b = document.createElement("button");
       b.className = "filter-btn" + (key === activeGroup ? " is-active" : "");
       b.innerHTML = escapeHtml(label) + ` <span class="cnt">${n}</span>`;
-      b.addEventListener("click", () => { activeGroup = key; renderFilters(); renderTable(getFiltered()); });
+      b.addEventListener("click", () => { activeGroup = key; renderPanels(); renderFilters(); renderTable(getFiltered()); });
       gf.appendChild(b);
     });
   }
@@ -821,7 +836,7 @@ async function saveCard(lead) {
     cinSec.dataset.ilk = cinSec.value; // kart açık kalırsa ikinci kayıt tekrar tetiklemesin
   }
 
-  const refresh = () => { renderStatusDist(CACHE); renderStats(CACHE); renderClassDist(CACHE); renderFilters(); renderTable(getFiltered()); };
+  const refresh = () => { renderPanels(); renderFilters(); renderTable(getFiltered()); };
 
   if (sb && lead.id != null) {
     msg.textContent = "Kaydediliyor…"; msg.className = "muted";
