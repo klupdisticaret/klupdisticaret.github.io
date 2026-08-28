@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dondurulmuş Gıda — Lead Takibi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css?v=19" />
+  <style>
+    .admin { max-width: 1080px; margin: 0 auto; padding: 24px 18px 60px; }
+    .admin h1 { margin: 0 0 4px; }
+    .gate { max-width: 380px; margin: 14vh auto; text-align: center; }
+    .gate .text-input { margin: 14px 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin: 18px 0; }
+    @media (min-width: 700px){ .stat-grid { grid-template-columns: repeat(4,1fr); } }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; box-shadow: var(--shadow-sm);
+    }
+    .stat b { font-size: 1.8rem; display: block; color: var(--orange-dark); }
+    .stat span { color: var(--muted); font-size: .82rem; }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+    .panel h3 { margin: 0 0 12px; }
+    .dist-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .9rem; }
+    .dist-row .lbl { width: 160px; flex-shrink: 0; color: var(--muted); }
+    .bar { flex: 1; background: var(--line); border-radius: 999px; height: 14px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--orange); }
+    .dist-row .val { width: 36px; text-align: right; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 700; }
+    .table-wrap { overflow-x: auto; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 20px; }
+    .btn--sm { padding: 10px 16px; font-size: .9rem; }
+    .btn--ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .btn--danger { background: #c0392b; color: #fff; }
+    .empty { text-align: center; color: var(--muted); padding: 30px; }
+
+    /* İçe aktarma: sütun eşleştirme */
+    .imp-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 14px 0; }
+    .imp-map:empty { margin: 0; }
+    .imp-row { display: flex; align-items: center; gap: 8px; font-size: .84rem; }
+    .imp-row > span { color: var(--muted); width: 92px; flex-shrink: 0; }
+    .imp-row select { margin: 0; padding: 7px 9px; font-size: .82rem; }
+
+    /* Funnel düşüş raporu */
+    .fn-top { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 6px 0 18px; }
+    .fn-kpi { background: var(--bg, #f6f7f9); border: 1px solid var(--line); border-radius: 11px; padding: 12px; text-align: center; }
+    .fn-kpi b { display: block; font-size: 1.5rem; color: var(--orange-dark); }
+    .fn-kpi span { color: var(--muted); font-size: .76rem; }
+    .fn-row { display: grid; grid-template-columns: 150px 1fr 44px 92px; align-items: center; gap: 10px; margin: 5px 0; font-size: .84rem; }
+    .fn-lbl { color: var(--muted); }
+    .fn-bar { background: var(--line); border-radius: 999px; height: 16px; overflow: hidden; }
+    .fn-bar > i { display: block; height: 100%; background: var(--orange); }
+    .fn-row.is-final .fn-bar > i { background: #1a7a45; }
+    .fn-n { text-align: right; font-weight: 700; }
+    .fn-drop { text-align: right; color: #c0392b; font-size: .78rem; font-weight: 700; }
+    .fn-hint { background: var(--orange-soft, #fff6e5); border: 1px solid #ffd9a0; color: #8a5a1f;
+      border-radius: 10px; padding: 10px 13px; font-size: .83rem; margin: 14px 0 0; }
+    @media (max-width: 620px) {
+      .fn-row { grid-template-columns: 110px 1fr 36px; }
+      .fn-drop { display: none; }
+    }
+
+    /* Çoklu seçim çubuğu */
+    .bulk-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: #fdeeec; border: 1px solid #e9b4ad; border-radius: 10px;
+      padding: 10px 14px; margin: 0 0 12px;
+    }
+    .bulk-bar b { color: #a3342a; font-size: .9rem; }
+    .c-sel { width: 34px; padding-right: 0; }
+    .c-sel input { width: 16px; height: 16px; cursor: pointer; accent-color: #c0392b; }
+
+    /* Satır silme butonu */
+    .row-del {
+      background: transparent; border: 1px solid var(--line); border-radius: 8px;
+      padding: 5px 9px; cursor: pointer; font-size: .95rem; line-height: 1;
+      opacity: .5; transition: opacity .12s, border-color .12s, background .12s;
+    }
+    tr:hover .row-del { opacity: 1; }
+    .row-del:hover { background: #fdeeec; border-color: #e9b4ad; opacity: 1; }
+    .row-del:disabled { opacity: .35; cursor: not-allowed; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .note-box { background: var(--orange-soft); border: 1px solid #ffd0ac; color: #8a4a1f; border-radius: 10px; padding: 12px 14px; font-size: .82rem; margin-bottom: 18px; }
+
+    /* Süreç durumu rozetleri */
+    .status-badge { padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; display: inline-block; }
+    .st-yeni      { background:#e3f0ff; color:#1d5fb0; }
+    .st-teklif    { background:#fff0d6; color:#9a6a00; }
+    .st-toplanti  { background:#e7e0ff; color:#5b3fb0; }
+    .st-gorusme   { background:#dcefff; color:#1462a8; }
+    .st-takip     { background:#fde9cc; color:#9a5a00; }
+    .st-kabul     { background:#dff5e6; color:#1a7a45; }
+    .st-sozlesme  { background:#d7f0e5; color:#127a58; }
+    .st-siparis   { background:#d5f0dd; color:#0f7a3d; }
+    .st-kalite    { background:#e6f7d9; color:#4a7a15; }
+    .st-sevkiyat  { background:#dff0d0; color:#3f7a10; }
+    .st-teslimat  { background:#cdeecd; color:#1c6b1c; }
+    .st-kayip     { background:#f1dede; color:#a33; }
+
+    /* Yeni lead durumu renkleri */
+    .ls-yeni    { background:#e3f0ff; color:#1d5fb0; }  /* mavi */
+    .ls-incele  { background:#e9ecf1; color:#59626d; }  /* gri */
+    .ls-wa      { background:#e2f7e9; color:#1f8a4c; }  /* açık yeşil */
+    .ls-cevap   { background:#fff4c2; color:#8a6b00; }  /* sarı */
+    .ls-gorusme { background:#efe6ff; color:#6b3fb0; }  /* mor */
+    .ls-potansiyel { background:#d6f2f0; color:#0e7c76; }  /* turkuaz */
+    .ls-thaz    { background:#ffe6cc; color:#b5641a; }  /* turuncu */
+    .ls-tgon    { background:#ffd2a6; color:#9a4700; }  /* koyu turuncu */
+    .ls-karar   { background:#eaddcb; color:#7a4a1e; }  /* kahverengi */
+    .ls-siparis { background:#d5f0dd; color:#12803d; }  /* yeşil */
+    .ls-ulasilamaz { background:#f3e2d0; color:#8a5a2b; }  /* soluk kiremit */
+    .ls-kapali  { background:#f4dede; color:#b23636; }  /* kırmızı/gri */
+    .filter-btn .cnt { opacity:.7; font-weight:700; margin-left:5px; }
+    .filter-btn.is-active .cnt { opacity:.95; }
+    .flabel-lbl { font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:2px 0 7px; }
+    /* Tablodaki ürün grubu rozeti */
+    .grp-badge { padding:3px 9px; border-radius:999px; font-size:.74rem; font-weight:700; white-space:nowrap; display:inline-block; }
+    .grp-meyve    { background:#ffe3ec; color:#b02a55; }
+    .grp-sebze    { background:#e2f5dd; color:#3f7a15; }
+    .grp-deniz    { background:#dcefff; color:#1462a8; }
+    .grp-bakliyat { background:#f0e6d6; color:#7a5a1e; }
+    .grp-hepsi    { background:#ece9f7; color:#5b4fa0; }
+    .grp-cin      { background:#ffe0d9; color:#b3341c; }
+    .grp-ambalaj  { background:#dff0ee; color:#1f7a6c; }
+    .grp-nalburiye { background:#e6ecf2; color:#31586f; }
+    .grp-yok      { background:transparent; color:var(--muted); font-weight:400; }
+    /* Ambalaj kartındaki 3 soru/cevap kutusu (kv gridine gömülü, tam genişlik) */
+    .ambalaj-box { display:flex; flex-direction:column; gap:10px; margin-bottom:4px; }
+    .ambalaj-q { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg); }
+    /* Nalburiye kartındaki 2 soru/cevap kutusu — Ambalaj'la aynı desen */
+    .nalburiye-box { display:flex; flex-direction:column; gap:10px; margin-bottom:4px; }
+    .nalburiye-q { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg); }
+    /* Firma hücresi: firma adı + altında müşterinin yazdığı ürün(ler).
+       Serbest metin cevaplar uzun olabildiği için tek satıra kısaltılır. */
+    .firma-cell { display:inline-block; max-width:300px; vertical-align:top; }
+    .firma-cell .ad { font-weight:600; }
+    .firma-cell .urun { display:block; font-size:.76rem; color:var(--muted);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* Telefon hücresi: rakamlar sütun hâlinde hizalansın, numara satır sonunda bölünmesin */
+    .tel-cell { font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .due-late { color:#c0392b; font-weight:700; }
+    .due-today { color:var(--orange-dark); font-weight:700; }
+    .due-none { color:var(--muted); }
+    /* Telefonda: her lead alt alta kart (yatay kaydırma yok) */
+    @media (max-width:640px){
+      #leadTable thead{display:none}
+      #leadTable, #leadTable tbody{display:block;width:100%}
+      #leadTable tr{display:block;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:10px;background:#fff}
+      #leadTable tr.clickable:hover td{background:transparent}
+      #leadTable td{display:flex;justify-content:space-between;align-items:center;gap:14px;border:none;padding:6px 0;white-space:normal;text-align:right}
+      #leadTable td::before{content:attr(data-label);color:var(--muted);font-weight:700;font-size:.74rem;text-align:left;white-space:nowrap}
+      #leadTable td:first-child{border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:2px}
+      /* Kart görünümünde satır dar: ürün cevabı kısaltılmak yerine alta sarsın */
+      .firma-cell{max-width:64%}
+      .firma-cell .urun{white-space:normal}
+      /* Sınıf bloğu başlığı kart listesinde ayraç gibi dursun */
+      #leadTable tr.grup-basi{padding:0;border:none;margin-bottom:6px;background:transparent}
+      #leadTable tr.grup-basi td{display:block;text-align:left;border-radius:8px;padding:7px 12px}
+      #leadTable tr.grup-basi td::before{content:none}
+      /* Sütun başlıkları gizli olduğu için sıralama butonu burada.
+         (Seçici .sort-bar ile başlıyor: aşağıdaki .mobil-sirala{display:none}
+         bu bloktan sonra geldiği için özgüllüğü yüksek tutmak gerekiyor.) */
+      .sort-bar .mobil-sirala{display:inline-block}
+    }
+    .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:6px; }
+    .edit-grid .field { display:flex; flex-direction:column; }
+    .edit-grid .field.full { grid-column:1/-1; }
+    @media (max-width:520px){ .edit-grid { grid-template-columns:1fr; } }
+
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: var(--orange-soft); }
+    .row-hint { font-size:.78rem; color:var(--muted); margin:2px 0 10px; }
+
+    /* Filtreler */
+    .filters { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 6px; }
+    .filter-btn {
+      background:#fff; border:1px solid var(--line); border-radius:999px;
+      padding:8px 14px; font-size:.82rem; font-weight:600; color:var(--ink); cursor:pointer;
+    }
+    .filter-btn:hover { border-color:#ffc59e; }
+    .filter-btn.is-active { background:var(--orange); border-color:var(--orange); color:#fff; }
+
+    /* Sınıf sıralaması: tıklanabilir sütun başlığı */
+    th.sortable { cursor:pointer; user-select:none; }
+    th.sortable:hover { color:var(--orange-dark); }
+    th.sortable:focus-visible { outline:2px solid var(--orange); outline-offset:-2px; }
+    th.sortable .ok { opacity:.35; margin-left:4px; font-size:.8rem; }
+    th.sortable.is-sorted { color:var(--orange-dark); }
+    th.sortable.is-sorted .ok { opacity:1; }
+    /* Sıralama açıkken her sınıfın başına giren blok başlığı */
+    tr.grup-basi td {
+      background:#f4f6fa; font-size:.74rem; font-weight:700; letter-spacing:.04em;
+      text-transform:uppercase; color:var(--muted); padding:7px 10px;
+    }
+    tr.grup-basi td .n { color:var(--ink); }
+    /* Sınıf filtresi + sıralama özeti */
+    .sort-bar {
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+      background:var(--orange-soft); border:1px solid #ffd0ac; border-radius:10px;
+      padding:9px 13px; font-size:.82rem; color:#8a4a1f; margin:12px 0 10px;
+    }
+    .sort-bar b { color:#7a3f16; }
+    .sort-bar .sb-btns { margin-left:auto; display:flex; gap:8px; }
+    .sort-bar button {
+      background:#fff; border:1px solid #ffd0ac; border-radius:999px;
+      padding:5px 12px; font-size:.78rem; font-weight:600; color:#8a4a1f; cursor:pointer;
+      font-family:inherit;
+    }
+    .sort-bar button:hover { border-color:var(--orange); }
+    .mobil-sirala { display:none; }   /* telefonda görünür (aşağıdaki media query) */
+    .manual-note { background:#fff7ea; border:1px solid #ffdca6; color:#8a5a00; border-radius:10px; padding:10px 12px; font-size:.84rem; margin:4px 0 6px; }
+
+    /* Modal / müşteri kartı */
+    .overlay { position: fixed; inset: 0; background: rgba(15,20,30,.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px 14px; overflow-y: auto; z-index: 50; }
+    .overlay[hidden] { display: none; }
+    .card-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 620px; box-shadow: var(--shadow); overflow: hidden; }
+    .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding: 18px 20px; background: var(--orange-soft); border-bottom:1px solid #ffd7bd; }
+    .card-head h2 { margin:0; font-size:1.2rem; }
+    .card-close { background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--muted); line-height:1; }
+    .card-body { padding: 18px 20px; }
+    .kv { display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; margin-bottom:16px; }
+    @media (max-width:520px){ .kv { grid-template-columns:1fr; } }
+    .kv > div { display:flex; flex-direction:column; }
+    .kv span { font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
+    .kv b { font-size:.95rem; word-break:break-word; }
+    /* Süreç zaman çizelgesi */
+    .pipeline { list-style:none; padding:0; margin:0 0 16px; }
+    .pipeline li { display:flex; align-items:center; gap:10px; padding:5px 0; font-size:.9rem; color:var(--muted); }
+    .pipeline li .dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; }
+    .pipeline li.done { color:var(--ink); font-weight:600; }
+    .pipeline li.done .dot { background:var(--ok); border-color:var(--ok); color:#fff; }
+    .pipeline li.current .dot { border-color:var(--orange); background:var(--orange); color:#fff; }
+    .pipeline li.current { color:var(--orange-dark); font-weight:700; }
+    .field-label { font-size:.8rem; font-weight:700; color:var(--muted); display:block; margin:10px 0 6px; }
+    .card-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    /* Admin notu: tek satırlık görüşme notu değil, birikmeli bir defter gibi
+       kullanılıyor — açılış yüksekliği 70px'ten 170px'e çıkarıldı. */
+    textarea.text-input { min-height:170px; resize:vertical; font-family:inherit; line-height:1.5; }
+    select.text-input { appearance:auto; }
+    .save-ok { color:var(--ok); font-weight:600; font-size:.85rem; }
+
+    /* Görüşme müsaitliği */
+    .avail-form .text-input{max-width:260px}
+    .av-lbl{display:block;font-size:.76rem;font-weight:700;color:var(--muted);margin:12px 0 6px}
+    .av-chk{display:flex;align-items:center;gap:10px;margin:12px 0;font-weight:600;cursor:pointer}
+    .av-chk input{width:19px;height:19px;accent-color:#c0392b}
+    .av-hours{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:470px}
+    @media(max-width:520px){.av-hours{grid-template-columns:repeat(3,1fr)}}
+    .hbtn{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-weight:700;font-size:.9rem;color:var(--muted);cursor:pointer}
+    .hbtn.on{background:#e2f7e9;border-color:#8fd6a8;color:#1a7a45}
+    .hbtn:disabled{opacity:.4;cursor:not-allowed}
+    .av-effect{margin-top:12px;font-size:.86rem;background:#eef5ff;border:1px solid #cfe0ff;color:#1d4e8a;border-radius:10px;padding:9px 12px}
+    #avSave{margin-top:12px}
+    .ov{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+    .ov .d{font-weight:700}
+    .ov .s{font-size:.84rem;color:var(--muted)}
+    .ov.closed{background:#fbecec;border-color:#f0cccc}
+    .ov.closed .s{color:#b23636;font-weight:700}
+    .ov .rm{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font-size:.8rem;font-weight:700;color:#b23636;cursor:pointer}
+  </style>
+</head>
+<body>
+
+  <!-- Giriş kapısı (Supabase hesabı) -->
+  <div class="gate" id="gate">
+    <div class="funnel__stepwrap">
+      <h2>🔒 Yönetim Paneli</h2>
+      <p class="muted">Supabase hesabınızla giriş yapın.</p>
+      <input id="email" class="text-input" type="email" placeholder="E-posta" autocomplete="username" />
+      <input id="pw" class="text-input" type="password" placeholder="Şifre" autocomplete="current-password" />
+      <button class="btn btn--cta" id="loginBtn" style="width:100%">Giriş</button>
+      <p id="pwErr" class="form-err" hidden></p>
+    </div>
+  </div>
+
+  <!-- Panel -->
+  <div class="admin" id="admin" hidden>
+    <div class="topbar">
+      <div>
+        <h1>📊 Dondurulmuş Gıda — Lead Takip Paneli</h1>
+        <p class="muted">Dondurulmuş Meyve · Sebze · Deniz Ürünleri · Bakliyat — CRM</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="index.html" class="btn btn--ghost btn--sm">← Siteye dön</a>
+        <a href="admin.html" class="btn btn--ghost btn--sm">🔧 Diğer hizmetler paneli</a>
+        <button class="btn btn--ghost btn--sm" id="logoutBtn">Çıkış</button>
+      </div>
+    </div>
+
+    <div class="note-box" id="sourceNote">
+      Veriler yükleniyor…
+    </div>
+
+    <div class="stat-grid" id="stats"></div>
+
+    <div class="toolbar">
+      <button class="btn btn--sm btn--ghost" id="exportCsv">⬇️ CSV indir</button>
+      <button class="btn btn--sm btn--ghost" id="exportJson">⬇️ JSON indir</button>
+      <button class="btn btn--sm btn--ghost" id="refresh">🔄 Yenile</button>
+    </div>
+
+    <div class="panel">
+      <h3>Süreç durumu (Takip & Sipariş)</h3>
+      <div id="distStatus"></div>
+    </div>
+    <div class="panel">
+      <h3>Grup dağılımı</h3>
+      <div id="distClass"></div>
+    </div>
+    <div class="panel">
+      <h3>Ürün dağılımı</h3>
+      <div id="distProduct"></div>
+    </div>
+    <div class="panel">
+      <h3>Tonaj & Bütçe dağılımı</h3>
+      <div id="distTonnage"></div>
+      <div style="height:10px"></div>
+      <div id="distBudget"></div>
+    </div>
+
+    <div class="panel">
+      <h3>⬆️ Meta / CSV ile lead içe aktar</h3>
+      <p class="row-hint">Meta Ads Manager'dan indirdiğiniz lead dosyasını seçin (.csv veya .xlsx).
+        Sütunlar otomatik eşleştirilir; yanlışsa aşağıdan elle düzeltebilirsiniz. Eklemeden önce önizleme gösterilir.</p>
+      <input type="file" id="impFile" accept=".csv,.xlsx,.xls" class="text-input">
+      <label class="field-label" for="impGroup" style="margin-top:14px">Bu dosyadaki leadler hangi hizmete ait? <span class="muted" style="font-weight:400">(dosyadan otomatik bulunur)</span></label>
+      <select id="impGroup" class="text-input"></select>
+      <p class="row-hint" id="impGroupHint" style="margin-top:7px"></p>
+      <div id="impMap" class="imp-map"></div>
+      <div id="impPreview"></div>
+      <button class="btn btn--cta btn--sm" id="impRun" disabled style="margin-top:12px">Önce dosya seçin</button>
+    </div>
+
+    <div class="panel">
+      <div class="topbar">
+        <h3 style="margin:0">📉 Ziyaretçi Düşüş Raporu</h3>
+        <select id="funnelRange" class="text-input" style="width:auto;padding:7px 10px;margin:0">
+          <option value="7">Son 7 gün</option>
+          <option value="30" selected>Son 30 gün</option>
+          <option value="90">Son 90 gün</option>
+        </select>
+      </div>
+      <p class="row-hint">Ziyaretçilerin hangi adımda vazgeçtiğini gösterir. Kişisel veri toplanmaz — yalnızca adım sayıları.</p>
+      <div id="funnelReport"></div>
+    </div>
+
+    <!-- 🕑 Görüşme Saatleri paneli bu panelde YOK — o ayar Çin/Ambalaj/Nalburiye
+         panelinde (admin.html) kalıyor. Görüşme saatleri güne özel, gruptan
+         bağımsız tek bir ayar olduğu için iki yerde göstermiyoruz. -->
+
+    <div class="panel">
+      <h3>Tüm Lead'ler</h3>
+      <p class="flabel-lbl">Ürün grubu</p>
+      <div class="filters" id="groupFilters"></div>
+      <p class="flabel-lbl">Sınıf</p>
+      <div class="filters" id="classFilters"></div>
+      <p class="flabel-lbl">Lead durumu</p>
+      <div class="filters" id="filters"></div>
+      <p class="flabel-lbl">Arama sonucu</p>
+      <div class="filters" id="callResultFilters"></div>
+      <p class="flabel-lbl">Sonraki aksiyon</p>
+      <div class="filters" id="nextActionFilters"></div>
+      <p class="flabel-lbl">Aksiyon</p>
+      <div class="filters" id="actionFilters"></div>
+      <div class="sort-bar" id="sortBar"></div>
+      <p class="row-hint">👉 Detay, durum, aksiyon, not ve takip tarihi için bir satıra tıklayın. Toplu silmek için soldaki kutuları işaretleyin.</p>
+      <p class="row-hint">⇅ Tablodaki <b>Sınıf</b> başlığına basınca liste sınıfa göre gruplanır (önce VIP, sonra Sıcak, Takip, Düşük). Bir daha basınca ters sıraya, üçüncüde tarihe döner.</p>
+      <div class="bulk-bar" id="bulkBar" hidden>
+        <b id="bulkCount">0 lead seçildi</b>
+        <button class="btn--sm btn--danger" id="bulkDel">🗑️ Seçilenleri sil</button>
+        <button class="btn--sm btn--ghost" id="bulkClear">Seçimi temizle</button>
+      </div>
+      <div class="table-wrap"><table id="leadTable"></table></div>
+    </div>
+  </div>
+
+  <!-- Müşteri Kartı (CRM) modalı -->
+  <div class="overlay" id="overlay" hidden>
+    <div class="card-modal" role="dialog" aria-modal="true">
+      <div class="card-head">
+        <div>
+          <h2 id="cardTitle">Müşteri Kartı</h2>
+          <p class="muted" id="cardRef" style="margin:2px 0 0"></p>
+        </div>
+        <button class="card-close" id="cardClose" aria-label="Kapat">✕</button>
+      </div>
+      <div class="card-body" id="cardBody"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js?v=20"></script>
+  <script src="js/supabase.js?v=31"></script>
+  <script src="js/scoring.js?v=37"></script>
+  <!-- Ürün listesi: grubu boş olan lead'lerin grubunu üründen tahmin etmek için -->
+  <script src="js/products.js?v=49"></script>
+  <script src="js/import.js?v=12"></script>
+  <script src="js/admin.js?v=66"></script>
+  <!-- Bu panele özel yama: leadleri sadece 4 dondurulmuş gıda grubuyla (+ grubu
+       belirsiz olanlar) sınırlar; Çin/Ambalaj/Nalburiye/Ambalaj 1 gruplarını
+       filtre satırından ve listeden çıkarır. Canlı admin.js'e dokunmaz. -->
+  <script src="js/panel-dondurulmus-patch.js?v=1"></script>
+</body>
+</html>
