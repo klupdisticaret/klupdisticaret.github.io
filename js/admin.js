@@ -102,10 +102,6 @@ const classRank = l => (CLASS_ORDER[l.klass || ""] != null ? CLASS_ORDER[l.klass
    "hepsi" seçen müşteri ayrı butonda listelenir; tek tek grup filtrelerinde çıkmaz. */
 const GROUP_FILTERS = [
   { key: "tumu",     label: "Tümü" },
-  { key: "meyve",    label: "🍓 Dondurulmuş Meyve" },
-  { key: "sebze",    label: "🥦 Dondurulmuş Sebze" },
-  { key: "deniz",    label: "🐟 Dondurulmuş Deniz Ürünleri" },
-  { key: "bakliyat", label: "🥜 Bakliyat" },
   { key: "hepsi",    label: "📦 Ambalaj 1" },   // etikette "Ambalaj 1"; veri anahtarı "hepsi" olarak korunuyor
   { key: "cin",      label: "🏮 Çin'den Ürün Getirme" },  // ayrı hizmet (dondurulmuş gıda değil)
   { key: "ambalaj",  label: "📦 Ambalaj Sarf Malzemeleri" },  // ayrı hizmet; 3 bilgi sorusu + bütçeye göre sınıflandırma VAR
@@ -114,7 +110,13 @@ const GROUP_FILTERS = [
 ];
 // Tabloda ve grup sütununda gösterilecek kısa etiketler
 // (Not: 🫘 ❔ 🇨🇳 Windows 10 emoji fontunda yok, kutu olarak çıkıyor — kullanmıyoruz.)
-const GROUP_SHORT = { meyve:"🍓 Meyve", sebze:"🥦 Sebze", deniz:"🐟 Deniz", bakliyat:"🥜 Bakliyat", hepsi:"📦 Ambalaj 1", cin:"🏮 Çin", ambalaj:"📦 Ambalaj", nalburiye:"🔧 Nalburiye" };
+const GROUP_SHORT = { hepsi:"📦 Ambalaj 1", cin:"🏮 Çin", ambalaj:"📦 Ambalaj", nalburiye:"🔧 Nalburiye" };
+
+/* İş Nalburiye/Çin/Ambalaj yönüne çevrildi. Dondurulmuş gıda gruplarına
+   (meyve/sebze/deniz/bakliyat) ait eski leadler panelde HİÇ gösterilmez:
+   ne tabloda, ne sayaçlarda, ne üst panelde, ne funnel'da (bkz. renderAll).
+   Kayıtlar silinmez; yalnızca gizlenir. */
+const RETIRED_GROUPS = ["meyve", "sebze", "deniz", "bakliyat"];
 
 /* Ambalaj Sarf Malzemeleri hizmetinin 3 sorusu. Sıra sabit: kartta, tabloda ve
    içe aktarma eşleştirmesinde hep bu sırayla gösterilir. */
@@ -272,6 +274,8 @@ async function loadLeads() {
 
 async function renderAll() {
   CACHE = await loadLeads();
+  // Dondurulmuş gıda gruplarına ait eski leadler tamamen gizlenir (bkz. RETIRED_GROUPS).
+  CACHE = CACHE.filter(l => !RETIRED_GROUPS.includes(leadGroupOf(l)));
   // Artık var olmayan (silinmiş) leadler seçimde asılı kalmasın
   const mevcut = new Set(CACHE.map(leadKey));
   SELECTED.forEach(k => { if (!mevcut.has(k)) SELECTED.delete(k); });
