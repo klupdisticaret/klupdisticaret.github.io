@@ -132,8 +132,12 @@ const NALBURIYE_SORULAR = [
   { key: "nalburiyeKategori", soru: "Hangi ana ürün grubu ile ilgileniyorsunuz?" },
   { key: "nalburiyeUrun",     soru: "İlgilendiğiniz ürünü veya ürünleri kısaca yazınız." },
 ];
-// Geçerli grup/hizmet anahtarları ("tumu" ve "yok" sanaldır, listede yer almaz)
-const GROUP_KEYS = GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok").map(g => g.key);
+// Geçerli grup/hizmet anahtarları ("tumu" ve "yok" sanaldır, listede yer almaz).
+// Emekli dondurulmuş gıda anahtarları (RETIRED_GROUPS) da burada tutulur: butonları
+// kaldırıldı ama leadGroupOf onları hâlâ tanısın ki eski leadler "yok"a düşüp
+// Belirtilmemiş'te görünmesin — renderAll'daki filtre onları gizliyor.
+const GROUP_KEYS = [...RETIRED_GROUPS,
+  ...GROUP_FILTERS.filter(g => g.key !== "tumu" && g.key !== "yok").map(g => g.key)];
 
 /* Müşteri kartındaki "Ürün grubu / Hizmet" açılır listesi.
    Tanımadığımız bir değer kayıtlıysa (eski/elle girilmiş) listeye olduğu gibi
@@ -274,8 +278,13 @@ async function loadLeads() {
 
 async function renderAll() {
   CACHE = await loadLeads();
-  // Dondurulmuş gıda gruplarına ait eski leadler tamamen gizlenir (bkz. RETIRED_GROUPS).
-  CACHE = CACHE.filter(l => !RETIRED_GROUPS.includes(leadGroupOf(l)));
+  // Dondurulmuş gıda gruplarına ait eski leadler tamamen gizlenir (bkz. RETIRED_GROUPS):
+  // hem kayıtlı grup değeri (etiket varyasyonları dahil) hem üründen tahmin edilen grup.
+  CACHE = CACHE.filter(l => {
+    const raw = String(l.group || "").toLocaleLowerCase("tr");
+    if (RETIRED_GROUPS.some(k => raw === k || raw.includes(k))) return false;
+    return !RETIRED_GROUPS.includes(leadGroupOf(l));
+  });
   // Artık var olmayan (silinmiş) leadler seçimde asılı kalmasın
   const mevcut = new Set(CACHE.map(leadKey));
   SELECTED.forEach(k => { if (!mevcut.has(k)) SELECTED.delete(k); });
